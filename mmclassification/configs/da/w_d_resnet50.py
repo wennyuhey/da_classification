@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/da_resnet50.py', '../_base_/datasets/da_office31.py',
+    '../_base_/models/da_resnet50.py', '../_base_/datasets/da_office31_w_d.py',
     '../_base_/schedules/da_office.py', '../_base_/default_runtime.py'
 ]
 conv_cfg=dict(type='ConvWM')

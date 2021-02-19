@@ -9,9 +9,11 @@ from .da_base import DABaseClassifier
 @CLASSIFIERS.register_module()
 class SupConClsClassifier(DABaseClassifier):
 
-    def __init__(self, backbone, neck=None, head=None, pretrained=None, feat_dim=128):
+    def __init__(self, backbone, neck=None, head=None, pretrained=None, feat_dim=128, class_num=31):
         super(SupConClsClassifier, self).__init__()
         self.backbone = build_backbone(backbone)
+        self.feat_dim = feat_dim
+        self.class_num = class_num
 
         if neck is not None:
             self.neck = build_neck(neck)
@@ -26,6 +28,7 @@ class SupConClsClassifier(DABaseClassifier):
         )
 
         self.init_weights(pretrained=pretrained)
+        self.class_map = torch.zeros(class_num, feat_dim).to(torch.device('cuda'))
 
     def init_weights(self, pretrained=None):
         super(SupConClsClassifier, self).init_weights(pretrained)
@@ -74,17 +77,23 @@ class SupConClsClassifier(DABaseClassifier):
         """
         feat_s = [self.extract_feat(img_s[i]) for i in range(len(img_s))]
         feat_t = [self.extract_feat(img_t[i]) for i in range(len(img_t))]
+        #feat_s = [feat_s[i] / feat_s[i].norm(dim=1).view(-1,1).repeat(1, feat_s[i].shape[1]) for i in range(len(feat_s))]
+        #feat_t = [feat_t[i] / feat_t[i].norm(dim=1).view(-1,1).repeat(1, feat_t[i].shape[1]) for i in range(len(feat_t))]
+        #x_s = [self.fc(feat_s[i]) / self.fc(feat_s[i]).norm(dim=1).view(-1, 1).repeat(1, self.fc(feat_s[i]).shape[1]) for i in range(len(feat_s))]
+        #x_t = [self.fc(feat_t[i]) / self.fc(feat_t[i]).norm(dim=1).view(-1, 1).repeat(1, self.fc(feat_t[i]).shape[1]) for i in range(len(feat_t))]
 
         x_s = [self.fc(feat_s[i]) for i in range(len(feat_s))]
         x_t = [self.fc(feat_t[i]) for i in range(len(feat_t))]
-
+        
+        for idx, label in enumerate(gt_label_s):
+            self.class_map[label, :] = self.class_map[label, :] * 0.5 + x_s[0][idx, :].detach() * 0.25 + x_s[1][idx, :].detach() * 0.25
 #        if isinstance(x_s, list):
         x_s = torch.cat([x_s[0].unsqueeze(1), x_s[1].unsqueeze(1)], dim=1)
         x_t = torch.cat([x_t[0].unsqueeze(1), x_t[1].unsqueeze(1)], dim=1)
-        x = torch.cat((x_s, x_t), dim=0)
+        #x = torch.cat((x_s, x_t), dim=0)
 
         losses = dict()
-        loss = self.head.forward_train(x, torch.cat((feat_s[0], feat_s[1])), gt_label_s)
+        loss = self.head.forward_train(x_s, x_t, torch.cat((feat_t[0], feat_t[1])), torch.cat((feat_s[0], feat_s[1])), gt_label_s, gt_label_t, self.class_map)
         losses.update(loss)
 
         return losses

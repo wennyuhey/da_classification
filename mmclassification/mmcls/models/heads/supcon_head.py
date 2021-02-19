@@ -46,6 +46,7 @@ class SupConClsHead(BaseHead):
         self.cls_loss = build_loss(cls_loss)
         self.num_classes = num_classes
         self.in_channels = in_channels
+        self.temp=0.1
 
         self._init_layers()
         assert isinstance(topk, (int, tuple))
@@ -74,22 +75,54 @@ class SupConClsHead(BaseHead):
         normal_init(self.projector2, mean=0, std=0.01, bias=0)
         """
 
-    def loss(self, features_mlp, features, gt_label):
+    def loss(self, features_mlp_source, features_mlp_target, features_target, features_source, gt_label, target, class_map):
         losses = dict()
-        target_label = torch.arange(start = 100, end = 100 + features_mlp.shape[0] - gt_label.shape[0], step = 1).to(torch.device('cuda'))
+        target_features = torch.cat(torch.unbind(features_mlp_target, dim=1), dim=0)
+        class_dot_dist = torch.div(torch.matmul(target_features, class_map.T), self.temp)
+        dist_max, dist_max_idx = torch.max(class_dot_dist, dim=1, keepdim=True)
+        exp_dist = torch.exp(class_dot_dist)
+        log_class_prob = dist_max - torch.log(exp_dist.sum(1, keepdim=True))
+        losses['class_dist_target'] = - log_class_prob.mean()
+        #exp_dist = torch.exp(class_dot_dist)
+        #losses['max_class_loss'], _ = torch.max(class_dot_dist, dim=1, keepdim=True)
+        
+   
+        # Target element label
+        target_label = torch.arange(start = 100, end = 100 + target.shape[0], step = 1).to(torch.device('cuda'))
+        gt_combine_label = torch.cat((gt_label, target))
         supcon_label = torch.cat((gt_label, target_label))
-        losses['supcon_loss'] = self.supcon_loss(features_mlp, supcon_label)
-        cls_label = gt_label.repeat(2) 
-        losses['cls_loss'] = self.cls_loss(features, cls_label)
-        acc = self.compute_accuracy(features, cls_label)
-        assert len(acc) == len(self.topk)
-        losses['accuracy'] = {f'top-{k}': a for k, a in zip(self.topk, acc)}
+
+        """Loss Type"""
+        #Type 1: concat source and target
+        features_mlp = torch.cat((features_mlp_source, features_mlp_target), dim=0) 
+        losses['supcon_combine_loss'] = self.supcon_loss(features_mlp.detach(), supcon_label)
+
+        features_mlp_test = features_mlp.clone().detach()
+        losses['supcon_combine_refer'] = self.supcon_loss(features_mlp_test, gt_combine_label)
+
+        #Type 2: source and target seperate
+        losses['supcon_target_loss'] = self.supcon_loss(features_mlp_target, target_label)
+        losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
+
+        losses['supcon_source_loss'] = self.supcon_loss(features_mlp_source, gt_label)
+
+        #classification loss
+        target_cls_label = target.repeat(2)
+        source_cls_label = gt_label.repeat(2)
+
+        losses['target_cls_loss'] = self.cls_loss(features_target.detach(), target_cls_label)
+        losses['source_cls_loss'] = self.cls_loss(features_source, source_cls_label)
+
+        #acc = self.compute_accuracy(features_source, source_cls_label)
+        #assert len(acc) == len(self.topk)
+        #losses['accuracy'] = {f'top-{k}': a for k, a in zip(self.topk, acc)}
 
         return losses
 
-    def forward_train(self, features_mlp, features, gt_label=None):
+    def forward_train(self, features_mlp_source, features_mlp_target, features_target, features, gt_label=None, target_label=None, class_map=None):
         cls_scores = self.fc(features)
-        losses = self.loss(features_mlp, cls_scores, gt_label)
+        target_cls_scores = self.fc(features_target)
+        losses = self.loss(features_mlp_source, features_mlp_target, target_cls_scores, cls_scores, gt_label, target_label, class_map)
         return losses
 
     def simple_test(self, img):
