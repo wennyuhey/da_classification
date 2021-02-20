@@ -9,10 +9,11 @@ from .samplers import DistributedSampler
 from .svhn import SVHN
 from .office31 import Office31
 from .partial_office import PartialOffice
+from .visda import VisDA
 
 __all__ = [
     'BaseDataset', 'ImageNet', 'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST',
     'build_dataloader', 'build_dataset', 'Compose', 'DistributedSampler',
     'ConcatDataset', 'RepeatDataset', 'ClassBalancedDataset', 'DATASETS',
-    'PIPELINES', 'SVHN', 'Office31', 'SupConDataset', 'PartialOffice'
+    'PIPELINES', 'SVHN', 'Office31', 'SupConDataset', 'PartialOffice', 'VisDA'
 ]

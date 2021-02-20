@@ -75,18 +75,34 @@ class SupConClsHead(BaseHead):
         normal_init(self.projector2, mean=0, std=0.01, bias=0)
         """
 
-    def loss(self, features_mlp_source, features_mlp_target, features_target, features_source, gt_label, target, class_map):
+    def loss(self, features_mlp_source, features_mlp_target, features_target, features_source, gt_label, target, class_map, class_map_target):
         losses = dict()
+        source_features = torch.cat(torch.unbind(features_mlp_source, dim=1), dim=0)
         target_features = torch.cat(torch.unbind(features_mlp_target, dim=1), dim=0)
+
+        """Distance between target features and source class prototype"""
         class_dot_dist = torch.div(torch.matmul(target_features, class_map.T), self.temp)
         dist_max, dist_max_idx = torch.max(class_dot_dist, dim=1, keepdim=True)
+        class_dot_dist = class_dot_dist - dist_max
         exp_dist = torch.exp(class_dot_dist)
-        log_class_prob = dist_max - torch.log(exp_dist.sum(1, keepdim=True))
+        log_class_prob = - torch.log(exp_dist.sum(1, keepdim=True))
         losses['class_dist_target'] = - log_class_prob.mean()
-        #exp_dist = torch.exp(class_dot_dist)
-        #losses['max_class_loss'], _ = torch.max(class_dot_dist, dim=1, keepdim=True)
+
+        """class prototype alignmenti evaluation"""
+        class_dist = torch.matmul(class_map, class_map_target.T).detach()
+        _, max_label = torch.max(class_dist, dim=1)
+        label_map = torch.arange(start=0, end=31, step=1).to(torch.device('cuda'))
+        losses['correct_count'] = torch.tensor(len(torch.where(max_label.squeeze() - label_map == 0)[0]), dtype=float)
+
+        """
+        class_dot_dist_s = torch.div(torch.matmul(source_features, class_map.T), self.temp)
+        dist_max_s, _ = torch.max(class_dot_dist_s, dim=1, keepdim=True)
+        class_dot_dist = class_dot_dist_s - dist_max_s
+        exp_dist_s = torch.exp(class_dot_dist)
+        log_class_prob_s = - torch.log(exp_dist_s.sum(1, keepdim=True))
+        losses['max_class_source'] = - log_class_prob_s.mean().detach()
+        """
         
-   
         # Target element label
         target_label = torch.arange(start = 100, end = 100 + target.shape[0], step = 1).to(torch.device('cuda'))
         gt_combine_label = torch.cat((gt_label, target))
@@ -94,14 +110,14 @@ class SupConClsHead(BaseHead):
 
         """Loss Type"""
         #Type 1: concat source and target
-        features_mlp = torch.cat((features_mlp_source, features_mlp_target), dim=0) 
-        losses['supcon_combine_loss'] = self.supcon_loss(features_mlp.detach(), supcon_label)
+        #features_mlp = torch.cat((features_mlp_source, features_mlp_target), dim=0) 
+        #losses['supcon_combine_loss'] = self.supcon_loss(features_mlp.detach(), supcon_label)
 
-        features_mlp_test = features_mlp.clone().detach()
-        losses['supcon_combine_refer'] = self.supcon_loss(features_mlp_test, gt_combine_label)
+        #features_mlp_test = features_mlp.clone().detach()
+        #losses['supcon_combine_refer'] = self.supcon_loss(features_mlp.detach(), gt_combine_label)
 
         #Type 2: source and target seperate
-        losses['supcon_target_loss'] = self.supcon_loss(features_mlp_target, target_label)
+        losses['supcon_target_loss'] = self.supcon_loss(features_mlp_target.detach(), target_label)
         losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
 
         losses['supcon_source_loss'] = self.supcon_loss(features_mlp_source, gt_label)
@@ -119,10 +135,10 @@ class SupConClsHead(BaseHead):
 
         return losses
 
-    def forward_train(self, features_mlp_source, features_mlp_target, features_target, features, gt_label=None, target_label=None, class_map=None):
+    def forward_train(self, features_mlp_source, features_mlp_target, features_target, features, gt_label=None, target_label=None, class_map=None, class_map_t=None):
         cls_scores = self.fc(features)
         target_cls_scores = self.fc(features_target)
-        losses = self.loss(features_mlp_source, features_mlp_target, target_cls_scores, cls_scores, gt_label, target_label, class_map)
+        losses = self.loss(features_mlp_source, features_mlp_target, target_cls_scores, cls_scores, gt_label, target_label, class_map, class_map_t)
         return losses
 
     def simple_test(self, img):

@@ -29,6 +29,7 @@ class SupConClsClassifier(DABaseClassifier):
 
         self.init_weights(pretrained=pretrained)
         self.class_map = torch.zeros(class_num, feat_dim).to(torch.device('cuda'))
+        self.class_map_t = torch.zeros(class_num, feat_dim).to(torch.device('cuda'))
 
     def init_weights(self, pretrained=None):
         super(SupConClsClassifier, self).init_weights(pretrained)
@@ -85,15 +86,31 @@ class SupConClsClassifier(DABaseClassifier):
         x_s = [self.fc(feat_s[i]) for i in range(len(feat_s))]
         x_t = [self.fc(feat_t[i]) for i in range(len(feat_t))]
         
-        for idx, label in enumerate(gt_label_s):
-            self.class_map[label, :] = self.class_map[label, :] * 0.5 + x_s[0][idx, :].detach() * 0.25 + x_s[1][idx, :].detach() * 0.25
+        for label in range(31):
+            label_num = 0
+            label_features = torch.zeros_like(self.class_map[label, :])
+            label_num_t = 0
+            label_features_t = torch.zeros_like(self.class_map[label, :])
+            for idx, cat in enumerate(gt_label_s):
+                if cat == label:
+                    label_num += 2
+                    label_features += x_s[0][idx, :].detach() + x_s[1][idx, :].detach()
+            if label_num != 0:
+                self.class_map[label, :] = self.class_map[label, :] * 0.1 + label_features / label_num * 0.9
+            for idx, cat in enumerate(gt_label_t):
+                if cat == label:
+                    label_num_t += 2
+                    label_features_t += x_t[0][idx, :].detach() + x_t[1][idx, :].detach()
+            if label_num_t != 0:
+                self.class_map_t[label, :] = self.class_map_t[label, :] * 0.5 + label_features_t / label_num_t * 0.5
+
 #        if isinstance(x_s, list):
         x_s = torch.cat([x_s[0].unsqueeze(1), x_s[1].unsqueeze(1)], dim=1)
         x_t = torch.cat([x_t[0].unsqueeze(1), x_t[1].unsqueeze(1)], dim=1)
         #x = torch.cat((x_s, x_t), dim=0)
 
         losses = dict()
-        loss = self.head.forward_train(x_s, x_t, torch.cat((feat_t[0], feat_t[1])), torch.cat((feat_s[0], feat_s[1])), gt_label_s, gt_label_t, self.class_map)
+        loss = self.head.forward_train(x_s, x_t, torch.cat((feat_t[0], feat_t[1])), torch.cat((feat_s[0], feat_s[1])), gt_label_s, gt_label_t, self.class_map, self.class_map_t)
         losses.update(loss)
 
         return losses

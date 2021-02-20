@@ -21,7 +21,7 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data_s = dict(
-    samples_per_gpu=32,
+    samples_per_gpu=128,
     workers_per_gpu=2,
     train=dict(
         type='SupConDataset',
@@ -40,7 +40,7 @@ data_s = dict(
         data_prefix='data/office31/dslr/images',
         pipeline=test_pipeline))
 data_t = dict(
-    samples_per_gpu=32,
+    samples_per_gpu=128,
     workers_per_gpu=2,
     train=dict(
         type='SupConDataset',
