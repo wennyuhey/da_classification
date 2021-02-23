@@ -142,5 +142,8 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
             num_imgs = len(results)
             assert len(gt_labels) == num_imgs
             acc = accuracy(results, gt_labels, topk)
-            eval_results = {f'top-{k}': a.item() for k, a in zip(topk, acc)}
+            if isinstance(topk, tuple):
+                eval_results = {f'top-{k}': a.item() for k, a in zip(topk, acc)}
+            elif isinstance(topk, int):
+                eval_results = {f'top-{topk}': acc.item()}
         return eval_results

@@ -21,7 +21,7 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data_s = dict(
-    samples_per_gpu=128,
+    samples_per_gpu=64,
     workers_per_gpu=2,
     train=dict(
         type='SupConDataset',
@@ -40,7 +40,7 @@ data_s = dict(
         data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline))
 data_t = dict(
-    samples_per_gpu=128,
+    samples_per_gpu=64,
     workers_per_gpu=2,
     train=dict(
         type='SupConDataset',
@@ -58,5 +58,4 @@ data_t = dict(
         type=dataset_type,
         data_prefix='data/office31/webcam/images',
         pipeline=test_pipeline))
-
-evaluation = dict(interval=1, metric='accuracy')
+evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)))

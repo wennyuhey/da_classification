@@ -59,4 +59,4 @@ data_t = dict(
         data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline))
 
-evaluation = dict(interval=1, metric='accuracy')
+evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)))

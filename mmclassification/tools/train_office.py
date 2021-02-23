@@ -10,11 +10,13 @@ from mmcv import Config, DictAction
 from mmcv.runner import init_dist
 
 from mmcls import __version__
-from mmcls.apis import set_random_seed, train_model
+from mmcls.apis import set_random_seed, train_office_model
 from mmcls.datasets import build_dataset
 from mmcls.models import build_classifier
 from mmcls.utils import collect_env, get_root_logger
 
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a model')
@@ -143,7 +145,7 @@ def main():
             config=cfg.pretty_text,
             CLASSES=datasets[0].CLASSES)
     # add an attribute for visualization convenience
-    train_model(
+    train_office_model(
         model,
         datasets,
         cfg,

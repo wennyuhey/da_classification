@@ -132,3 +132,133 @@ def train_model(model,
     elif cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
     runner.run(data_loaders, cfg.workflow)
+
+def train_office_model(model,
+                dataset,
+                cfg,
+                distributed=False,
+                validate=False,
+                timestamp=None,
+                meta=None):
+    logger = get_root_logger(cfg.log_level)
+
+    # prepare data loaders
+    dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
+
+    data_loaders = [
+        build_dataloader(
+            ds,
+            cfg.data.samples_per_gpu,
+            cfg.data.workers_per_gpu,
+            # cfg.gpus will be ignored if distributed
+            num_gpus=len(cfg.gpu_ids),
+            dist=distributed,
+            round_up=True,
+            seed=cfg.seed) for ds in dataset
+    ]
+
+    # put model on gpus
+    if distributed:
+        find_unused_parameters = cfg.get('find_unused_parameters', False)
+        # Sets the `find_unused_parameters` parameter in
+        # torch.nn.parallel.DistributedDataParallel
+        model = MMDistributedDataParallel(
+            model.cuda(),
+            device_ids=[torch.cuda.current_device()],
+            broadcast_buffers=False,
+            find_unused_parameters=find_unused_parameters)
+    else:
+        model = MMDataParallel(
+            model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
+
+    # build runner
+    optimizer = {}
+    for name, module in model.module.named_children():
+        if 'backbone' in name:
+            optimizer.update({name: build_optimizer(module, cfg.optimizer_backbone)})
+        elif 'neck' in name:
+            #optimizer.update({name: build_optimizer(module, cfg.optimizer_neck)})
+            continue
+        elif 'head' in name:
+            optimizer.update({name: build_optimizer(module, cfg.optimizer_head)})
+        else:
+            raise ValueError(
+                f' "{name}" configuration is not defined in config')
+
+    if cfg.get('runner') is None:
+        cfg.runner = {
+            'type': 'EpochBasedRunner',
+            'max_epochs': cfg.total_epochs
+        }
+        warnings.warn(
+            'config is now expected to have a `runner` section, '
+            'please set `runner` in your config.', UserWarning)
+
+    runner = build_runner(
+        cfg.runner,
+        default_args=dict(
+            model=model,
+            batch_processor=None,
+            optimizer=optimizer,
+            work_dir=cfg.work_dir,
+            logger=logger,
+            meta=meta))
+
+    # an ugly walkaround to make the .log and .log.json filenames the same
+    runner.timestamp = timestamp
+
+    # fp16 setting
+    fp16_cfg = cfg.get('fp16', None)
+    if fp16_cfg is not None:
+        optimizer_config = Fp16OptimizerHook(
+            **cfg.optimizer_config, **fp16_cfg, distributed=distributed)
+    elif distributed and 'type' not in cfg.optimizer_config:
+        optimizer_config = DistOptimizerHook(**cfg.optimizer_config)
+    else:
+        optimizer_config = cfg.optimizer_config
+
+    # register hooks
+    runner.register_training_hooks(cfg.lr_config, optimizer_config,
+                                   cfg.checkpoint_config, cfg.log_config,
+                                   cfg.get('momentum_config', None))
+    if distributed:
+        runner.register_hook(DistSamplerSeedHook())
+
+    # register eval hooks
+    if validate:
+        val_dataset_a = build_dataset(cfg.data.val_a, dict(test_mode=True))
+        val_dataset_w = build_dataset(cfg.data.val_w, dict(test_mode=True))
+        val_dataset_d = build_dataset(cfg.data.val_d, dict(test_mode=True))
+        val_dataloader = []
+        val_dataloader.append(build_dataloader(
+            val_dataset_a,
+            samples_per_gpu=cfg.data.samples_per_gpu,
+            workers_per_gpu=cfg.data.workers_per_gpu,
+            dist=distributed,
+            shuffle=False,
+            round_up=True))
+        val_dataloader.append(build_dataloader(
+            val_dataset_w,
+            samples_per_gpu=cfg.data.samples_per_gpu,
+            workers_per_gpu=cfg.data.workers_per_gpu,
+            dist=distributed,
+            shuffle=False,
+            round_up=True))
+        val_dataloader.append(build_dataloader(
+            val_dataset_d,
+            samples_per_gpu=cfg.data.samples_per_gpu,
+            workers_per_gpu=cfg.data.workers_per_gpu,
+            dist=distributed,
+            shuffle=False,
+            round_up=True))
+        eval_cfg = cfg.get('evaluation', {})
+        eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
+        eval_hook = DistEvalHook if distributed else OfficeEvalHook
+        runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
+
+    if cfg.resume_from:
+        runner.resume(cfg.resume_from)
+    elif cfg.load_from:
+        runner.load_checkpoint(cfg.load_from)
+    runner.run(data_loaders, cfg.workflow)
+

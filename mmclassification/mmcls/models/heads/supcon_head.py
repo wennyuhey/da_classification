@@ -86,7 +86,7 @@ class SupConClsHead(BaseHead):
         class_dot_dist = class_dot_dist - dist_max
         exp_dist = torch.exp(class_dot_dist)
         log_class_prob = - torch.log(exp_dist.sum(1, keepdim=True))
-        losses['class_dist_target'] = - log_class_prob.mean()
+        losses['class_dist_target'] = - 10 * log_class_prob.mean()
 
         """class prototype alignmenti evaluation"""
         class_dist = torch.matmul(class_map, class_map_target.T).detach()
@@ -117,8 +117,8 @@ class SupConClsHead(BaseHead):
         #losses['supcon_combine_refer'] = self.supcon_loss(features_mlp.detach(), gt_combine_label)
 
         #Type 2: source and target seperate
-        losses['supcon_target_loss'] = self.supcon_loss(features_mlp_target.detach(), target_label)
-        losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
+        #losses['supcon_target_loss'] = self.supcon_loss(features_mlp_target, target_label)
+        #losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
 
         losses['supcon_source_loss'] = self.supcon_loss(features_mlp_source, gt_label)
 
@@ -126,7 +126,7 @@ class SupConClsHead(BaseHead):
         target_cls_label = target.repeat(2)
         source_cls_label = gt_label.repeat(2)
 
-        losses['target_cls_loss'] = self.cls_loss(features_target.detach(), target_cls_label)
+        #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
         losses['source_cls_loss'] = self.cls_loss(features_source, source_cls_label)
 
         #acc = self.compute_accuracy(features_source, source_cls_label)
