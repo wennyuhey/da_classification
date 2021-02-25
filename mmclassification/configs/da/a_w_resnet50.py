@@ -6,3 +6,4 @@ conv_cfg=dict(type='ConvWM')
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/pretrain_res50x1_new.pth'
 load_from = '/lustre/S/wangyu/PretrainedModels/resnet50-19c8e357_new.pth'
+aux = True

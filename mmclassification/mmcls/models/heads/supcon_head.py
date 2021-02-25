@@ -38,8 +38,8 @@ class SupConClsHead(BaseHead):
     def __init__(self,
                  in_channels,
                  num_classes,
-                 sup_loss=dict(type='SupConLoss', loss_weight=1.0),
-                 cls_loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
+                 sup_loss=dict(type='SupConLoss', loss_weight=0.1),
+                 cls_loss=dict(type='CrossEntropyLoss', loss_weight=0.1),
                  topk=(1, )):
         super(SupConClsHead, self).__init__()
         self.supcon_loss = build_loss(sup_loss)
@@ -86,13 +86,47 @@ class SupConClsHead(BaseHead):
         class_dot_dist = class_dot_dist - dist_max
         exp_dist = torch.exp(class_dot_dist)
         log_class_prob = - torch.log(exp_dist.sum(1, keepdim=True))
-        losses['class_dist_target'] = - 10 * log_class_prob.mean()
+        losses['class_dist_target_loss'] = - 1 * log_class_prob.mean()
 
+        """
+        target_pred = dist_max_idx.detach().squeeze()
+        target_pred = target_pred.split(int(target_pred.shape[0]/2))
+
+
+        losses['dist_acc[0]'] = sum(target_pred[0] == target)/len(target)
+        #losses['dist_acc[1]'] = sum(target_pred[1] == target)/len(target)
+        
+        _, pred = features_target.detach().topk(1, dim=1)
+        pred = pred.squeeze()
+        pred = pred.split(int(pred.shape[0]/2))
+        losses['class_acc[0]'] = sum(pred[0] == target)/len(target)
+        #losses['class_acc[1]'] = sum(pred[1] == target)/len(target)
+        """
+        _, pred_s = features_source.detach().topk(1,dim=1)
+        pred_s = pred_s.squeeze()
+        pred_s = pred_s.split(int(pred_s.shape[0]/2))
+        #losses['class_acc_s[0]'] = sum(pred_s[0] == gt_label)/len(gt_label)
+        #losses['class_acc_s[1]'] = sum(pred_s[1] == gt_label)/len(gt_label)
+        #losses['class_dist_align'] = sum(pred[0] == target_pred[0])/len(target)
+        #losses['correct_align'] = sum(torch.logical_and(target_pred[0] == target, pred[0] == target))/len(target)
+        
+        class_dot_dist_source = torch.div(torch.matmul(source_features.detach(), class_map.T), self.temp)
+        dist_max_source, dist_max_idx_source = torch.max(class_dot_dist_source, dim=1, keepdim=True)
+        #class_dot_dist_source = class_dot_dist_source - dist_max_source
+        #exp_dist_source = torch.exp(class_dot_dist_source)
+        #log_class_prob_source = - torch.log(exp_dist_source.sum(1, keepdim=True))
+        #losses['class_dist_source'] = - log_class_prob_source.mean()
+
+        source_pred = dist_max_idx_source.detach().squeeze()
+        source_pred = source_pred.split(int(source_pred.shape[0]/2))
+        #losses['dist_acc[0]'] = sum(source_pred[0] == gt_label)/len(gt_label)
+        
+  
         """class prototype alignmenti evaluation"""
         class_dist = torch.matmul(class_map, class_map_target.T).detach()
         _, max_label = torch.max(class_dist, dim=1)
         label_map = torch.arange(start=0, end=31, step=1).to(torch.device('cuda'))
-        losses['correct_count'] = torch.tensor(len(torch.where(max_label.squeeze() - label_map == 0)[0]), dtype=float)
+        #losses['correct_count'] = torch.tensor(len(torch.where(max_label.squeeze() - label_map == 0)[0]), dtype=float)
 
         """
         class_dot_dist_s = torch.div(torch.matmul(source_features, class_map.T), self.temp)
@@ -117,16 +151,15 @@ class SupConClsHead(BaseHead):
         #losses['supcon_combine_refer'] = self.supcon_loss(features_mlp.detach(), gt_combine_label)
 
         #Type 2: source and target seperate
-        #losses['supcon_target_loss'] = self.supcon_loss(features_mlp_target, target_label)
+        losses['supcon_target_loss'] = self.supcon_loss(features_mlp_target, target_label)
         #losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
-
         losses['supcon_source_loss'] = self.supcon_loss(features_mlp_source, gt_label)
 
         #classification loss
         target_cls_label = target.repeat(2)
         source_cls_label = gt_label.repeat(2)
 
-        #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
+        #losses['target_cls_loss'] = self.cls_loss(features_target.detach(), target_cls_label)
         losses['source_cls_loss'] = self.cls_loss(features_source, source_cls_label)
 
         #acc = self.compute_accuracy(features_source, source_cls_label)
@@ -141,14 +174,18 @@ class SupConClsHead(BaseHead):
         losses = self.loss(features_mlp_source, features_mlp_target, target_cls_scores, cls_scores, gt_label, target_label, class_map, class_map_t)
         return losses
 
-    def simple_test(self, img):
+    def simple_test(self, img, img_mlp, class_map):
         """Test without augmentation."""
-        cls_score = self.fc(img)
+        #cls_score = self.fc(img)
+        cls_dist = torch.matmul(img_mlp, class_map.T)
+        pred = F.softmax(cls_dist, dim=1)
+        """
         if isinstance(cls_score, list):
             cls_score = sum(cls_score) / float(len(cls_score))
         pred = F.softmax(cls_score, dim=1) if cls_score is not None else None
         if torch.onnx.is_in_onnx_export():
             return pred
+        """
         pred = list(pred.detach().cpu().numpy())
         return pred
 

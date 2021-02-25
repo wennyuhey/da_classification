@@ -28,8 +28,12 @@ class SupConClsClassifier(DABaseClassifier):
         )
 
         self.init_weights(pretrained=pretrained)
-        self.class_map = torch.zeros(class_num, feat_dim).to(torch.device('cuda'))
-        self.class_map_t = torch.zeros(class_num, feat_dim).to(torch.device('cuda'))
+        #self.register_buffer('test', torch.zeros([1]))
+        #self.register_buffer('test1', torch.zeros()
+        #self.class_map = torch.zeros(class_num, feat_dim).to(torch.device('cuda'))
+        #self.class_map_t = torch.zeros(class_num, feat_dim).to(torch.device('cuda'))
+        self.register_buffer('class_map', torch.zeros(class_num, feat_dim))
+        self.register_buffer('class_map_t', torch.zeros(class_num, feat_dim))
 
     def init_weights(self, pretrained=None):
         super(SupConClsClassifier, self).init_weights(pretrained)
@@ -46,19 +50,19 @@ class SupConClsClassifier(DABaseClassifier):
         if self.with_head:
             self.head.init_weights()
 
-    def extract_feat(self, img):
+    def extract_feat(self, img, domain):
         """Directly extract features from the backbone + neck
         """
         if isinstance(img, list):
             x = []
             for img_split in img:
-                img_split = self.backbone(img_split)
+                img_split = self.backbone(img_split, domain)
                 if self.with_neck:
                     img_split = self.neck(img_split)
                 img_split = self.fc(img_split)
                 x.append(img_split)
         else:
-            x = self.backbone(img)
+            x = self.backbone(img, domain)
             if self.with_neck:
                 x = self.neck(x)
         return x
@@ -76,8 +80,8 @@ class SupConClsClassifier(DABaseClassifier):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
-        feat_s = [self.extract_feat(img_s[i]) for i in range(len(img_s))]
-        feat_t = [self.extract_feat(img_t[i]) for i in range(len(img_t))]
+        feat_s = [self.extract_feat(img_s[i], torch.tensor([0])) for i in range(len(img_s))]
+        feat_t = [self.extract_feat(img_t[i], torch.tensor([1])) for i in range(len(img_t))]
         #feat_s = [feat_s[i] / feat_s[i].norm(dim=1).view(-1,1).repeat(1, feat_s[i].shape[1]) for i in range(len(feat_s))]
         #feat_t = [feat_t[i] / feat_t[i].norm(dim=1).view(-1,1).repeat(1, feat_t[i].shape[1]) for i in range(len(feat_t))]
         #x_s = [self.fc(feat_s[i]) / self.fc(feat_s[i]).norm(dim=1).view(-1, 1).repeat(1, self.fc(feat_s[i]).shape[1]) for i in range(len(feat_s))]
@@ -86,6 +90,8 @@ class SupConClsClassifier(DABaseClassifier):
         x_s = [self.fc(feat_s[i]) for i in range(len(feat_s))]
         x_t = [self.fc(feat_t[i]) for i in range(len(feat_t))]
         
+        #feat_s = x_s
+        #feat_t = x_t
         for label in range(31):
             label_num = 0
             label_features = torch.zeros_like(self.class_map[label, :])
@@ -96,14 +102,20 @@ class SupConClsClassifier(DABaseClassifier):
                     label_num += 2
                     label_features += x_s[0][idx, :].detach() + x_s[1][idx, :].detach()
             if label_num != 0:
-                self.class_map[label, :] = self.class_map[label, :] * 0.1 + label_features / label_num * 0.9
+                if sum(self.class_map[label, :]) == 0:
+                    self.class_map[label, :] = label_features / label_num
+                else:
+                    self.class_map[label, :] = self.class_map[label, :] * 0.99 + label_features / label_num * 0.01
+            
             for idx, cat in enumerate(gt_label_t):
                 if cat == label:
                     label_num_t += 2
                     label_features_t += x_t[0][idx, :].detach() + x_t[1][idx, :].detach()
             if label_num_t != 0:
-                self.class_map_t[label, :] = self.class_map_t[label, :] * 0.5 + label_features_t / label_num_t * 0.5
-
+                if sum(self.class_map_t[label, :]) == 0:
+                    self.class_map_t[label, :] = label_features_t / label_num_t
+                else:
+                    self.class_map_t[label, :] = self.class_map_t[label, :] * 0.9 + label_features_t / label_num_t * 0.1
 #        if isinstance(x_s, list):
         x_s = torch.cat([x_s[0].unsqueeze(1), x_s[1].unsqueeze(1)], dim=1)
         x_t = torch.cat([x_t[0].unsqueeze(1), x_t[1].unsqueeze(1)], dim=1)
@@ -117,5 +129,7 @@ class SupConClsClassifier(DABaseClassifier):
 
     def simple_test(self, img):
         """Test without augmentation."""
-        x = self.extract_feat(img)
-        return self.head.simple_test(x)
+        x = self.extract_feat(img, torch.tensor([1]))
+        #x = self.fc(x)
+        x_mlp = self.fc(x)
+        return self.head.simple_test(x, x_mlp, self.class_map)

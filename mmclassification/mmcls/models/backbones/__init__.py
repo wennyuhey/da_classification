@@ -13,8 +13,9 @@ from .shufflenet_v1 import ShuffleNetV1
 from .shufflenet_v2 import ShuffleNetV2
 from .vgg import VGG
 from .da_lenet import DALeNet5
+from .da_resnet import AuxResNet
 __all__ = [
     'LeNet5', 'AlexNet', 'VGG', 'RegNet', 'ResNet', 'ResNeXt', 'ResNetV1d',
     'ResNeSt', 'ResNet_CIFAR', 'SEResNet', 'SEResNeXt', 'ShuffleNetV1',
-    'ShuffleNetV2', 'MobileNetV2', 'MobileNetv3', 'DALeNet5'
+    'ShuffleNetV2', 'MobileNetV2', 'MobileNetv3', 'DALeNet5', 'AuxResNet'
 ]

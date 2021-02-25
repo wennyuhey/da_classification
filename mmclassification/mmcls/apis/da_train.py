@@ -9,7 +9,7 @@ from mmcv.runner import DistSamplerSeedHook, build_optimizer, build_runner
 from mmcls.core import (DistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
                         Fp16OptimizerHook)
 from mmcls.datasets import build_dataloader, build_dataset
-from mmcls.utils import get_root_logger
+from mmcls.utils import get_root_logger, convert_splitbn_model
 
 
 def da_set_random_seed(seed, deterministic=False):
@@ -164,8 +164,12 @@ def da_train_model(model,
         eval_hook = DistEvalHook if distributed else DAEvalHook
         runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
 
+    #if cfg.resume_from:
+    #    runner.resume(cfg.resume_from)
+    if cfg.load_from:
+        runner.load_checkpoint(cfg.load_from)
+    if cfg.aux:
+        runner.model.module.backbone = convert_splitbn_model(runner.model.module.backbone)
     if cfg.resume_from:
         runner.resume(cfg.resume_from)
-    elif cfg.load_from:
-        runner.load_checkpoint(cfg.load_from)
     runner.run(data_loaders_s, data_loaders_t, cfg.workflow)
