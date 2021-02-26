@@ -20,14 +20,12 @@ class DAEvalHook(Hook):
         self.interval = interval
         self.eval_kwargs = eval_kwargs
         self.by_epoch = by_epoch
-    """
     def before_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import single_gpu_test
         results = single_gpu_test(runner.model, self.dataloader, show=False)
         self.evaluate(runner, results)
-    """
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
@@ -50,7 +48,7 @@ class DAEvalHook(Hook):
             runner.log_buffer.output[name] = val
         runner.log_buffer.ready = True
 
-class OfficeEvalHook(EvalHook):
+class OfficeEvalHook(DAEvalHook):
     def __init__(self,
                  dataloader,
                  interval=1,
@@ -78,7 +76,7 @@ class OfficeEvalHook(EvalHook):
             runner.log_buffer.ready = True
 
 
-class DistEvalHook(EvalHook):
+class DADistEvalHook(DAEvalHook):
     """Distributed evaluation hook.
 
     Args:
@@ -96,9 +94,9 @@ class DistEvalHook(EvalHook):
                  gpu_collect=False,
                  by_epoch=True,
                  **eval_kwargs):
-        if not isinstance(dataloader, DataLoader):
-            raise TypeError('dataloader must be a pytorch DataLoader, but got '
-                            f'{type(dataloader)}')
+        #if not isinstance(dataloader, DataLoader):
+        #    raise TypeError('dataloader must be a pytorch DataLoader, but got '
+        #                    f'{type(dataloader)}')
         self.dataloader = dataloader
         self.interval = interval
         self.gpu_collect = gpu_collect
@@ -109,11 +107,23 @@ class DistEvalHook(EvalHook):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import multi_gpu_test
-        results = multi_gpu_test(
+        results = []
+        results.append(multi_gpu_test(
             runner.model,
-            self.dataloader,
+            self.dataloader[0],
             tmpdir=osp.join(runner.work_dir, '.eval_hook'),
-            gpu_collect=self.gpu_collect)
+            gpu_collect=self.gpu_collect))
+        results.append(multi_gpu_test(
+            runner.model,
+            self.dataloader[1],
+            tmpdir=osp.join(runner.work_dir, '.eval_hook'),
+            gpu_collect=self.gpu_collect))
+        results.append(multi_gpu_test(
+            runner.model,
+            self.dataloader[2],
+            tmpdir=osp.join(runner.work_dir, '.eval_hook'),
+            gpu_collect=self.gpu_collect))
+
         if runner.rank == 0:
             print('\n')
             self.evaluate(runner, results)

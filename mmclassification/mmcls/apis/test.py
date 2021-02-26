@@ -57,6 +57,7 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
         prog_bar = mmcv.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
     for i, data in enumerate(data_loader):
+        print(data)
         with torch.no_grad():
             result = model(return_loss=False, **data)
         if isinstance(result, list):
@@ -199,6 +200,7 @@ def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
         prog_bar = mmcv.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
     for i, data in enumerate(data_loader):
+        data = {'img_s': data['img']}
         with torch.no_grad():
             result = model(return_loss=False, **data)
         if isinstance(result, list):
@@ -207,7 +209,7 @@ def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
             results.append(result)
 
         if rank == 0:
-            batch_size = data['img'].size(0)
+            batch_size = data['img_s'].size(0)
             for _ in range(batch_size * world_size):
                 prog_bar.update()
 

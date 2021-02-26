@@ -6,7 +6,7 @@ import torch
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmcv.runner import DistSamplerSeedHook, build_optimizer, build_runner
 
-from mmcls.core import (DistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
+from mmcls.core import (DADistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
                         Fp16OptimizerHook)
 from mmcls.datasets import build_dataloader, build_dataset
 from mmcls.utils import get_root_logger, convert_splitbn_model
@@ -72,7 +72,7 @@ def da_train_model(model,
 
     # put model on gpus
     if distributed:
-        find_unused_parameters = cfg.get('find_unused_parameters', False)
+        find_unused_parameters = cfg.get('find_unused_parameters', True)
         # Sets the `find_unused_parameters` parameter in
         # torch.nn.parallel.DistributedDataParallel
         model = MMDistributedDataParallel(
@@ -161,7 +161,7 @@ def da_train_model(model,
 
         eval_cfg = cfg.get('evaluation', {})
         eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
-        eval_hook = DistEvalHook if distributed else DAEvalHook
+        eval_hook = DADistEvalHook if distributed else DAEvalHook
         runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
 
     #if cfg.resume_from:

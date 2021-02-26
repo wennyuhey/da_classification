@@ -21,26 +21,7 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data_s = dict(
-    samples_per_gpu=64,
-    workers_per_gpu=2,
-    train=dict(
-        type='SupConDataset',
-        times=2,
-        dataset=dict(
-            type=dataset_type,
-            data_prefix='data/office31/dslr/images',
-            pipeline=train_pipeline)),
-    val=dict(
-        type=dataset_type,
-        data_prefix='data/office31/dslr/images',
-        pipeline=test_pipeline),
-    test=dict(
-        # replace `data/val` with `data/test` for standard test
-        type=dataset_type,
-        data_prefix='data/office31/dslr/images',
-        pipeline=test_pipeline))
-data_t = dict(
-    samples_per_gpu=128,
+    samples_per_gpu=16,
     workers_per_gpu=2,
     train=dict(
         type='SupConDataset',
@@ -58,5 +39,23 @@ data_t = dict(
         type=dataset_type,
         data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline))
-
+data_t = dict(
+    samples_per_gpu=64,
+    workers_per_gpu=2,
+    train=dict(
+        type='SupConDataset',
+        times=2,
+        dataset=dict(
+            type=dataset_type,
+            data_prefix='data/office31/amazon/images',
+            pipeline=train_pipeline)),
+    val=dict(
+        type=dataset_type,
+        data_prefix='data/office31/amazon/images',
+        pipeline=test_pipeline),
+    test=dict(
+        # replace `data/val` with `data/test` for standard test
+        type=dataset_type,
+        data_prefix='data/office31/amazon/images',
+        pipeline=test_pipeline))
 evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)))

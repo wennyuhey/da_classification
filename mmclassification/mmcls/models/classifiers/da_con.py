@@ -105,7 +105,7 @@ class SupConClsClassifier(DABaseClassifier):
                 if sum(self.class_map[label, :]) == 0:
                     self.class_map[label, :] = label_features / label_num
                 else:
-                    self.class_map[label, :] = self.class_map[label, :] * 0.99 + label_features / label_num * 0.01
+                    self.class_map[label, :] = self.class_map[label, :] * 0.9 + label_features / label_num * 0.1
             
             for idx, cat in enumerate(gt_label_t):
                 if cat == label:

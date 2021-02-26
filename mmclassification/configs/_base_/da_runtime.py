@@ -4,7 +4,7 @@ checkpoint_config = dict(interval=1)
 log_config = dict(
     interval=10,
     hooks=[
-        dict(type='TextLoggerHook'),
+        dict(type='DATextLoggerHook'),
         # dict(type='TensorboardLoggerHook')
     ])
 # yapf:enable

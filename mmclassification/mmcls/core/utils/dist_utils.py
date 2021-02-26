@@ -49,8 +49,16 @@ class DistOptimizerHook(OptimizerHook):
         self.bucket_size_mb = bucket_size_mb
 
     def after_train_iter(self, runner):
-        runner.optimizer.zero_grad()
+        if isinstance(runner.optimizer, dict):
+            for k,optim in runner.optimizer.items():
+                optim.zero_grad()
+        else:
+            runner.optimizer.zero_grad()
         runner.outputs['loss'].backward()
         if self.grad_clip is not None:
             self.clip_grads(runner.model.parameters())
-        runner.optimizer.step()
+        if isinstance(runner.optimizer, dict):
+            for k,optim in runner.optimizer.items():
+                optim.step()
+        else:
+            runner.optimizer.step()
