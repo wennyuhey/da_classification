@@ -7,8 +7,4 @@ model = dict(
         num_stages=4,
         out_indices=(3, ),
         style='pytorch'),
-    neck=dict(type='GlobalAveragePooling'),
-    head=dict(
-        type='SupConHead',
-        loss=dict(type='SupConLoss', temperature=0.1)
-    ))
+    neck=dict(type='GlobalAveragePooling'))

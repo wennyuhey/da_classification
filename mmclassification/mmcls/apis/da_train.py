@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import torch
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
-from mmcv.runner import DistSamplerSeedHook, build_optimizer, build_runner
+from mmcv.runner import DADistSamplerSeedHook, build_optimizer, build_runner
 
 from mmcls.core import (DADistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
                         Fp16OptimizerHook)
@@ -54,18 +54,20 @@ def da_train_model(model,
             num_gpus=len(cfg.gpu_ids),
             dist=distributed,
             round_up=True,
+            drop_last=True,
             seed=cfg.seed) for ds in dataset_s
     ]
 
     data_loaders_t = [
         build_dataloader(
             ds,
-            cfg.data_s.samples_per_gpu,
-            cfg.data_s.workers_per_gpu,
+            cfg.data_t.samples_per_gpu,
+            cfg.data_t.workers_per_gpu,
             # cfg.gpus will be ignored if distributed
             num_gpus=len(cfg.gpu_ids),
             dist=distributed,
             round_up=True,
+            drop_last=True,
             seed=cfg.seed) for ds in dataset_t
     ]
 
@@ -91,6 +93,8 @@ def da_train_model(model,
             optimizer.update({name: build_optimizer(module, cfg.optimizer_backbone)})
         elif 'neck' in name:
             #optimizer.update({name: build_optimizer(module, cfg.optimizer_neck)})
+            continue
+        elif 'loss' in name:
             continue
         elif 'head' in name:
             optimizer.update({name: build_optimizer(module, cfg.optimizer_head)})
@@ -137,7 +141,7 @@ def da_train_model(model,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
     if distributed:
-        runner.register_hook(DistSamplerSeedHook())
+        runner.register_hook(DADistSamplerSeedHook())
 
     # register eval hooks
     if validate:
@@ -166,10 +170,12 @@ def da_train_model(model,
 
     #if cfg.resume_from:
     #    runner.resume(cfg.resume_from)
-    if cfg.load_from:
-        runner.load_checkpoint(cfg.load_from)
+    #if cfg.load_from:
+    #    runner.load_checkpoint(cfg.load_from)
     if cfg.aux:
         runner.model.module.backbone = convert_splitbn_model(runner.model.module.backbone)
+    if cfg.load_from:
+        runner.load_checkpoint(cfg.load_from)
     if cfg.resume_from:
         runner.resume(cfg.resume_from)
     runner.run(data_loaders_s, data_loaders_t, cfg.workflow)

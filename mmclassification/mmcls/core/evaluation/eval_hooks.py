@@ -119,8 +119,8 @@ class DistEvalHook(EvalHook):
             self.evaluate(runner, results)
 
     def after_train_iter(self, runner):
-        if self.by_epoch or not self.every_n_iters(runner, self.interval):
-            return
+        #if self.by_epoch or not self.every_n_iters(runner, self.interval):
+        #    return
         from mmcls.apis import multi_gpu_test
         runner.log_buffer.clear()
         results = multi_gpu_test(

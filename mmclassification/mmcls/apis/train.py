@@ -112,19 +112,18 @@ def train_model(model,
         runner.register_hook(DistSamplerSeedHook())
 
     # register eval hooks
-    if validate:
+    if cfg.validate:
         val_dataset = build_dataset(cfg.data.val, dict(test_mode=True))
-        val_dataloader = []
-        val_dataloader.append(build_dataloader(
+        val_dataloader=build_dataloader(
             val_dataset,
             samples_per_gpu=cfg.data.samples_per_gpu,
             workers_per_gpu=cfg.data.workers_per_gpu,
             dist=distributed,
             shuffle=False,
-            round_up=True))
+            round_up=True)
         eval_cfg = cfg.get('evaluation', {})
         eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
-        eval_hook = DistEvalHook if distributed else OfficeEvalHook
+        eval_hook = DistEvalHook if distributed else EvalHook
         runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
 
     if cfg.resume_from:
@@ -225,7 +224,7 @@ def train_office_model(model,
         runner.register_hook(DistSamplerSeedHook())
 
     # register eval hooks
-    if validate:
+    if cfg.validate:
         val_dataset_a = build_dataset(cfg.data.val_a, dict(test_mode=True))
         val_dataset_w = build_dataset(cfg.data.val_w, dict(test_mode=True))
         val_dataset_d = build_dataset(cfg.data.val_d, dict(test_mode=True))

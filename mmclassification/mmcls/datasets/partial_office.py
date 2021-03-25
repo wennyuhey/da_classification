@@ -1,4 +1,5 @@
 import codecs
+import mmcv
 import os
 import os.path as osp
 
@@ -42,4 +43,5 @@ class PartialOffice(BaseDataset):
                 info['gt_label'] = np.array(idx, dtype=np.int64)
                 data_infos.append(info)
         """
+        mmcv.dump(data_infos, 'data_infos.pkl')
         return data_infos

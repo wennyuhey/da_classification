@@ -1,6 +1,6 @@
 # model settings
 model = dict(
-    type='SupConClsClassifier',
+    type='DASupConClsClassifier',
     backbone = dict(
         type='AuxResNet',
         depth=50,

@@ -90,14 +90,13 @@ def main():
     if args.autoscale_lr:
         # apply the linear scaling rule (https://arxiv.org/abs/1706.02677)
         cfg.optimizer['lr'] = cfg.optimizer['lr'] * len(cfg.gpu_ids) / 8
-
     # init distributed env first, since logger depends on the dist info.
     if args.launcher == 'none':
         distributed = False
     else:
+        print(cfg.dist_params)
         distributed = True
         init_dist(args.launcher, **cfg.dist_params)
-
     # create work_dir
     mmcv.mkdir_or_exist(osp.abspath(cfg.work_dir))
     # init the logger before other steps

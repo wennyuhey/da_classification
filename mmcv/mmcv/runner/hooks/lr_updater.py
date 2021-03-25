@@ -85,7 +85,14 @@ class LrUpdaterHook(Hook):
             warmup_lr = [_lr * self.warmup_ratio for _lr in self.regular_lr]
         elif self.warmup == 'linear':
             k = (1 - cur_iters / self.warmup_iters) * (1 - self.warmup_ratio)
-            warmup_lr = [_lr * (1 - k) for _lr in self.regular_lr]
+            if isinstance(self.regular_lr, dict):
+                warmup_lr = {}
+                for name in self.regular_lr:
+                    _lr_group = [
+                    _lr * k for _lr in self.regular_lr[name]]
+                    warmup_lr.update({name: _lr_group})
+            else:
+                warmup_lr = [_lr * (1 - k) for _lr in self.regular_lr]
         elif self.warmup == 'exp':
             k = self.warmup_ratio**(1 - cur_iters / self.warmup_iters)
             warmup_lr = [_lr * k for _lr in self.regular_lr]

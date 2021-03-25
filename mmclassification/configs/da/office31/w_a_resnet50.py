@@ -15,4 +15,5 @@ _base_ = [
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/pretrain_res50x1_new.pth'
 #load_from = '/lustre/S/wangyu/PretrainedModels/resnet50-19c8e357_new.pth'
-#aux = True
+aux = True
+load_from = '/lustre/S/wangyu/checkpoint/classification/da/supcon_sourceonly/office/webcam/latest.pth'

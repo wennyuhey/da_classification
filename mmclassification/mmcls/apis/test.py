@@ -57,7 +57,6 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
         prog_bar = mmcv.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
     for i, data in enumerate(data_loader):
-        print(data)
         with torch.no_grad():
             result = model(return_loss=False, **data)
         if isinstance(result, list):

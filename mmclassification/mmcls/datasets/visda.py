@@ -22,8 +22,8 @@ class VisDA(BaseDataset):
     def load_annotations(self):
         data_infos = []
         file_list = open(osp.join(self.data_prefix, 'image_list.txt'), 'r')
-        img = file_list.readline()
-        while img:
+        imgs = file_list.readlines()
+        for img in imgs:
             img_prefix, label = img.replace('\n', '').split(' ')
             info = {'img_prefix': self.data_prefix} 
             info['img_info'] = {'filename': img_prefix}

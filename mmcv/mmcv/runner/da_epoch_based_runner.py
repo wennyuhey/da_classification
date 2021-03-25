@@ -22,6 +22,8 @@ class DAEpochBasedRunner(DABaseRunner):
     """
 
     def run_iter(self, data_s, data_t, train_mode, **kwargs):
+        import pdb
+        pdb.set_trace()
         data_s['img_s'] = data_s.pop('img')
         data_t['img_t'] = data_t.pop('img')
         data_s['gt_label_s'] = data_s.pop('gt_label')
