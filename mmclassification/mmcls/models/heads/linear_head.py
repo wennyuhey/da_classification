@@ -32,6 +32,7 @@ class LinearClsHead(ClsHead):
                 f'num_classes={num_classes} must be a positive integer')
 
         self._init_layers()
+        self.init_weights()
 
     def _init_layers(self):
         self.fc = nn.Linear(self.in_channels, self.num_classes)

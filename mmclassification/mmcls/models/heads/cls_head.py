@@ -34,7 +34,8 @@ class ClsHead(BaseHead):
         num_samples = len(cls_score)
         losses = dict()
         # compute loss
-        loss = self.compute_loss(cls_score, gt_label, avg_factor=num_samples)
+        #loss = self.compute_loss(cls_score, gt_label, avg_factor=num_samples)
+        loss = self.compute_loss(cls_score, gt_label)
         # compute accuracy
         acc = self.compute_accuracy(cls_score, gt_label)
         assert len(acc) == len(self.topk)

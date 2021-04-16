@@ -31,7 +31,6 @@ def _init_dist_pytorch(backend, **kwargs):
     rank = int(os.environ['RANK'])
     num_gpus = torch.cuda.device_count()
     torch.cuda.set_device(rank % num_gpus)
-    print('start init process group!--------------------------')
     dist.init_process_group(backend=backend, **kwargs)
 
 

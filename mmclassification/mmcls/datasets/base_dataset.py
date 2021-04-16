@@ -115,7 +115,8 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
                  results,
                  metric='accuracy',
                  metric_options={'topk': (1, 5)},
-                 logger=None):
+                 logger=None,
+                 classwise=False):
         """Evaluate the dataset.
 
         Args:
@@ -141,7 +142,7 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
             gt_labels = self.get_gt_labels()
             num_imgs = len(results)
             assert len(gt_labels) == num_imgs
-            acc = accuracy(results, gt_labels, topk)
+            acc = accuracy(results, gt_labels, topk, classwise)
             if isinstance(topk, tuple):
                 eval_results = {f'top-{k}': a.item() for k, a in zip(topk, acc)}
             elif isinstance(topk, int):

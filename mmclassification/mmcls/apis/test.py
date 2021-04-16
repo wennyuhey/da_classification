@@ -158,7 +158,7 @@ def da_single_gpu_test(model, data_loader, show=False, out_dir=None):
     dataset = data_loader.dataset
     prog_bar = mmcv.ProgressBar(len(dataset))
     for i, data in enumerate(data_loader):
-        data = {'img_s': data['img']}
+        data = {'img_s' :  data['img']}
         with torch.no_grad():
             result = model(return_loss=False, **data)
         results.append(result)

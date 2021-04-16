@@ -60,5 +60,7 @@ class Hook:
     def end_of_epoch(self, runner):
         if hasattr(runner, 'data_loader'):
             return(runner.inner_iter + 1 == len(runner.data_loader))
-        elif hasattr(runner, 'data_loader_s'):
+        elif hasattr(runner, 'data_loader_t'):
             return runner.inner_iter + 1 == max(len(runner.data_loader_s), len(runner.data_loader_t))
+        elif hasattr(runner, 'data_loader_s'):
+            return runner.inner_iter + 1 == len(runner.data_loader_s)

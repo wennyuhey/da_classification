@@ -12,7 +12,7 @@ class EvalHook(Hook):
         interval (int): Evaluation interval (by epochs). Default: 1.
     """
 
-    def __init__(self, dataloader, interval=1, by_epoch=True, **eval_kwargs):
+    def __init__(self, dataloader, interval=1, by_epoch=True, classwise=False, **eval_kwargs):
         #if not isinstance(dataloader, DataLoader):
         #    raise TypeError('dataloader must be a pytorch DataLoader, but got'
         #                    f' {type(dataloader)}')
@@ -20,6 +20,7 @@ class EvalHook(Hook):
         self.interval = interval
         self.eval_kwargs = eval_kwargs
         self.by_epoch = by_epoch
+        self.classwise = classwise
     """
     def before_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
@@ -45,7 +46,7 @@ class EvalHook(Hook):
 
     def evaluate(self, runner, results):
         eval_res = self.dataloader.dataset.evaluate(
-            results, logger=runner.logger, **self.eval_kwargs)
+            results, logger=runner.logger, classwise=self.classwise, **self.eval_kwargs)
         for name, val in eval_res.items():
             runner.log_buffer.output[name] = val
         runner.log_buffer.ready = True
@@ -72,7 +73,7 @@ class OfficeEvalHook(EvalHook):
         datasetdict = {0: 'amazon', 1: 'webcam', 2: 'dslr'}
         for i in range(3):
             eval_res.append(self.dataloader[i].dataset.evaluate(
-                results[i], logger=runner.logger, **self.eval_kwargs))
+                results[i], logger=runner.logger, classwise=self.classwise, **self.eval_kwargs))
             for name, val in eval_res[i].items():
                 runner.log_buffer.output[datasetdict[i] + name] = val
             runner.log_buffer.ready = True
@@ -119,8 +120,8 @@ class DistEvalHook(EvalHook):
             self.evaluate(runner, results)
 
     def after_train_iter(self, runner):
-        #if self.by_epoch or not self.every_n_iters(runner, self.interval):
-        #    return
+        if self.by_epoch or not self.every_n_iters(runner, self.interval):
+            return
         from mmcls.apis import multi_gpu_test
         runner.log_buffer.clear()
         results = multi_gpu_test(
@@ -140,7 +141,7 @@ class DAEvalHook(Hook):
         interval (int): Evaluation interval (by epochs). Default: 1.
     """
 
-    def __init__(self, dataloader, interval=1, by_epoch=True, **eval_kwargs):
+    def __init__(self, dataloader, interval=1, by_epoch=True, classwise=False, **eval_kwargs):
         #if not isinstance(dataloader, DataLoader):
         #    raise TypeError('dataloader must be a pytorch DataLoader, but got'
         #                    f' {type(dataloader)}')
@@ -148,20 +149,20 @@ class DAEvalHook(Hook):
         self.interval = interval
         self.eval_kwargs = eval_kwargs
         self.by_epoch = by_epoch
+        self.classwise = classwise
     """
     def before_train_epoch(self, runner):
-        if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
-            return
-        from mmcls.apis import single_gpu_test
-        results = single_gpu_test(runner.model, self.dataloader, show=False)
-        self.evaluate(runner, results)
+        from mmcls.apis import da_single_gpu_test
+        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
+        self.evaluate(runner, results_s, results_t)
     """
-
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import da_single_gpu_test
-        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        results_s = None
         results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
         self.evaluate(runner, results_s, results_t)
 
@@ -170,19 +171,21 @@ class DAEvalHook(Hook):
             return
         from mmcls.apis import da_single_gpu_test
         runner.log_buffer.clear()
-        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        results_s = None
         results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
         self.evaluate(runner, results_s, results_t)
 
 
     def evaluate(self, runner, results_s, results_t):
-        eval_res_s = self.dataloader[0].dataset.evaluate(
-            results_s, logger=runner.logger, **self.eval_kwargs)
-        for name, val in eval_res_s.items():
-            runner.log_buffer.output['source_' + name] = val
-        runner.log_buffer.ready = True
+        if results_s is not None:
+            eval_res_s = self.dataloader[0].dataset.evaluate(
+                results_s, logger=runner.logger, classwise=self.classwise, **self.eval_kwargs)
+            for name, val in eval_res_s.items():
+                runner.log_buffer.output['source_' + name] = val
+            runner.log_buffer.ready = True
         eval_res_t = self.dataloader[1].dataset.evaluate(
-            results_t, logger=runner.logger, **self.eval_kwargs)
+            results_t, logger=runner.logger, classwise=self.classwise, **self.eval_kwargs)
         for name, val in eval_res_t.items():
             runner.log_buffer.output['target_' + name] = val
         runner.log_buffer.ready = True

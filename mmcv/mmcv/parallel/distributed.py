@@ -28,6 +28,9 @@ class MMDistributedDataParallel(DistributedDataParallel):
         ``self.module.forward()`` with ``self.module.train_step()``.
         It is compatible with PyTorch 1.1 - 1.5.
         """
+        if self.reducer._rebuild_buckets():
+            print("Reducer buckets have been rebuilt in this iteration."
+)
         if getattr(self, 'require_forward_param_sync', True):
             self._sync_params()
         if self.device_ids:

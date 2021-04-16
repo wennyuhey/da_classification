@@ -20,19 +20,30 @@ class DAEvalHook(Hook):
         self.interval = interval
         self.eval_kwargs = eval_kwargs
         self.by_epoch = by_epoch
+        import pdb
+        pdb.set_trace()
     def before_train_epoch(self, runner):
-        if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
-            return
+        import pdb
+        pdb.set_trace()
         from mmcls.apis import single_gpu_test
-        results = single_gpu_test(runner.model, self.dataloader, show=False)
+        #results = single_gpu_test(runner.model, self.dataloader, show=False)
+        #self.evaluate(runner, results)
+        results = []
+
+        results.append(single_gpu_test(runner.model, self.dataloader[0], show=False))
+        results.append(single_gpu_test(runner.model, self.dataloader[1], show=False))
         self.evaluate(runner, results)
+
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import single_gpu_test
-        results = single_gpu_test(runner.model, self.dataloader, show=False)
+        results = []
+        
+        results.append(single_gpu_test(runner.model, self.dataloader[0], show=False))
+        results.append(single_gpu_test(runner.model, self.dataloader[1], show=False))
         self.evaluate(runner, results)
-
+    """
     def after_train_iter(self, runner):
         if self.by_epoch or not self.every_n_iters(runner, self.interval):
             return
@@ -40,13 +51,16 @@ class DAEvalHook(Hook):
         runner.log_buffer.clear()
         results = single_gpu_test(runner.model, self.dataloader, show=False)
         self.evaluate(runner, results)
-
+    """
     def evaluate(self, runner, results):
-        eval_res = self.dataloader.dataset.evaluate(
-            results, logger=runner.logger, **self.eval_kwargs)
-        for name, val in eval_res.items():
-            runner.log_buffer.output[name] = val
-        runner.log_buffer.ready = True
+        eval_res = []
+        datasetdict = {0: 'source', 1: 'target'}
+        for i in range(2):
+            eval_res.append(self.dataloader[i].dataset.evaluate(
+                results[i], logger=runner.logger, **self.eval_kwargs)
+            for name, val in eval_res.items():
+                runner.log_buffer.output[datasetdict[i] + '_' + name] = val
+            runner.log_buffer.ready = True
 
 class OfficeEvalHook(DAEvalHook):
     def __init__(self,

@@ -35,13 +35,4 @@ class Office31(BaseDataset):
                     info['img_info'] = {'filename': osp.join(label, img)}
                     info['gt_label'] = np.array(idx, dtype=np.int64)
                     data_infos.append(info)
-        """
-        for idx, label in enumerate(label_list):
-            file_list = os.listdir(osp.join(self.data_prefix, label, 'images'))
-            for img in file_list:
-                info = {'img_prefix': self.data_prefix}
-                info['img_info'] = {'filename': osp.join(label, img)}
-                info['gt_label'] = np.array(idx, dtype=np.int64)
-                data_infos.append(info)
-        """
         return data_infos

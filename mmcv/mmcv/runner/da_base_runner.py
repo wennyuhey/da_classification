@@ -55,7 +55,8 @@ class DABaseRunner(metaclass=ABCMeta):
                  logger=None,
                  meta=None,
                  max_iters=None,
-                 max_epochs=None):
+                 max_epochs=None,
+                 source_only=None):
         if batch_processor is not None:
             if not callable(batch_processor):
                 raise TypeError('batch_processor must be callable, '
@@ -102,6 +103,7 @@ class DABaseRunner(metaclass=ABCMeta):
         self.optimizer = optimizer
         self.logger = logger
         self.meta = meta
+        self.source_only = source_only
 
         # create work_dir
         if mmcv.is_str(work_dir):

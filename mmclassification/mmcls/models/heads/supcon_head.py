@@ -17,6 +17,7 @@ class SupConClsHead(BaseHead):
                  in_channels,
                  num_classes,
                  mlp_dim,
+                 momentum=0.9,
                  supcon_loss=dict(type='SupConLoss', loss_weight=1.0),
                  cls_loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
                  topk=(1,)):
@@ -35,6 +36,8 @@ class SupConClsHead(BaseHead):
         for _topk in topk:
             assert _topk > 0, 'Top-k should be larger than 0'
         self.topk = topk
+
+        self.momentum = momentum
 
         self.compute_accuracy = Accuracy(topk=self.topk)
       
@@ -104,12 +107,15 @@ class DASupConClsHead(BaseHead):
                  in_channels,
                  num_classes,
                  mlp_dim,
+                 momentum=0.9,
                  sup_source_loss=None,
                  con_target_loss=None,
                  dist_loss=None,
                  w_loss=None,
                  cls_loss=None,
-                 topk=(1, )):
+                 topk=(1, ),
+                 frozen_map=True,
+                 domain_loss=None):
         super(DASupConClsHead, self).__init__()
 
         self.sup_source_loss = None
@@ -117,6 +123,9 @@ class DASupConClsHead(BaseHead):
         self.dist_loss = None
         self.cls_loss = None
         self.w_loss = None
+        self.frozen_map = frozen_map
+        self.momentum = momentum
+        self.domain_loss = None
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -128,6 +137,9 @@ class DASupConClsHead(BaseHead):
             self.cls_loss = build_loss(cls_loss)
         if w_loss is not None:
             self.w_loss = build_loss(w_loss)
+            self.gradreverse = GradReverse(1)
+        if domain_loss is not None:
+            self.domain_loss = build_loss(domain_loss)
             self.gradreverse = GradReverse(1)
 
         self.num_classes = num_classes
@@ -190,47 +202,17 @@ class DASupConClsHead(BaseHead):
         losses = dict()
 
         if self.dist_loss is not None:
-            losses['class_dist_target_loss'] = self.dist_loss(target_features, class_map)
+            losses['class_dist_target_loss'] = self.dist_loss(mlp_target, self.class_map)
        
         if self.w_loss is not None:
             losses['wdist_loss'] = self.w_loss(reverse_source, reverse_target)
 
-        #_, pred_s = features_source.detach().topk(1,dim=1)
-        #pred_s = pred_s.squeeze()
-        #pred_s = pred_s.split(int(pred_s.shape[0]/2))
-        #losses['class_acc_s[0]'] = sum(pred_s[0] == gt_label)/len(gt_label)
-        #losses['class_acc_s[1]'] = sum(pred_s[1] == gt_label)/len(gt_label)
-        #losses['class_dist_align'] = sum(pred[0] == target_pred[0])/len(target)
-        #losses['correct_align'] = sum(torch.logical_and(target_pred[0] == target, pred[0] == target))/len(target)
-
-        #source_pred = dist_max_idx_source.detach().squeeze()
-        #source_pred = source_pred.split(int(source_pred.shape[0]/2))
-        #losses['dist_acc[0]'] = sum(source_pred[0] == gt_label)/len(gt_label)
-        
-  
-        """class prototype alignmenti evaluation"""
-        #class_dist = torch.matmul(class_map, class_map_target.T).detach()
-        #_, max_label = torch.max(class_dist, dim=1)
-        #label_map = torch.arange(start=0, end=31, step=1).to(torch.device('cuda'))
-        #losses['correct_count'] = torch.tensor(len(torch.where(max_label.squeeze() - label_map == 0)[0]), dtype=float)
-
-        # Target element label
-        #gt_combine_label = torch.cat((gt_label, target))
-        #supcon_label = torch.cat((gt_label, target_label))
-
-        """Loss Type"""
-        #Type 1: concat source and target
-        #features_mlp = torch.cat((features_mlp_source, features_mlp_target), dim=0) 
-        #losses['supcon_combine_loss'] = self.supcon_loss(features_mlp.detach(), supcon_label)
-
-        #features_mlp_test = features_mlp.clone().detach()
-        #losses['supcon_combine_refer'] = self.supcon_loss(features_mlp.detach(), gt_combine_label)
-
-        #Type 2: source and target seperate
+        if self.domain_loss is not None:
+            losses['domain_loss']= self.domain_loss(reverse_source, reverse_target)
 
         if self.con_target_loss is not None:
-            features_mlp_target = torch.cat(mlp_target[0: batchsize].unsqueeze(1),
-                                            mlp_target[batchsize:-1].unsqueeze(1), dim=1)
+            features_mlp_target = torch.cat((mlp_target[0: batchsize].unsqueeze(1),
+                                            mlp_target[batchsize: batchsize*2].unsqueeze(1)), dim=1)
             target_label = torch.arange(target_label.shape[0]).to(torch.device('cuda'))
             losses['supcon_target_loss'] = self.con_target_loss(features_mlp_target, target_label)
             #losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
@@ -240,10 +222,20 @@ class DASupConClsHead(BaseHead):
                                             mlp_source[batchsize:,:].unsqueeze(1)), dim=1)
             losses['supcon_source_loss'] = self.sup_source_loss(features_mlp_source, source_label)
 
+        """
+        features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize, :],
+                                  mlp_target[0: batchsize, :])).unsqueeze(1),
+                                  torch.cat((mlp_source[batchsize:, :],
+                                  mlp_target[batchsize:, :])).unsqueeze(1)),dim=1)
+        gt_label = torch.cat((source_label, target_label))
+        losses['test_supcon_loss'] = self.sup_source_loss(features_mlp, gt_label)
+        """
         #classification loss
         if self.cls_loss is not None:
-            source_cls_label = source_label.repeat(2)
-            #target_cls_label = target.repeat(2)
+            if(source_label.size(0) != cls_source.size(0)):
+                source_cls_label = source_label.repeat(2)
+            else:
+                source_cls_label = source_label
             #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
@@ -254,14 +246,18 @@ class DASupConClsHead(BaseHead):
         return losses
 
     def forward_train(self, features_source, features_target, source_label=None, target_label=None):
+        
         cls_source = self.fc(features_source)
-        cls_target = self.fc(features_target)
-
         mlp_source = self.contrastive_projector(features_source)
-        mlp_target = self.contrastive_projector(features_target)
-
         mlp_source = mlp_source / mlp_source.norm(dim=1, keepdim=True)
-        mlp_target = mlp_target / mlp_target.norm(dim=1, keepdim=True)
+
+        if features_target is not None:
+            cls_target = self.fc(features_target)
+            mlp_target = self.contrastive_projector(features_target)
+            mlp_target = mlp_target / mlp_target.norm(dim=1, keepdim=True)
+        else:
+            cls_target = None
+            mlp_target = None
 
         reverse_source = None
         reverse_target = None
@@ -276,7 +272,12 @@ class DASupConClsHead(BaseHead):
             reverse_source = reverse_source / reverse_source.norm(dim=1, keepdim=True)
             reverse_target = reverse_target / reverse_target.norm(dim=1, keepdim=True)
 
-        #self.accumulate_map(mlp_source, mlp_target, source_label, target_label)
+        if self.domain_loss is not None:
+            reverse_source = self.gradreverse.apply(features_source)
+            reverse_target = self.gradreverse.apply(features_target)
+
+        if self.frozen_map is False:
+            self.accumulate_map(mlp_source, mlp_target, source_label, target_label)
 
         losses = self.loss(mlp_source,
                            mlp_target, 
@@ -306,7 +307,7 @@ class DASupConClsHead(BaseHead):
         momentum = 0.1
         bs_size_s = int(feat_s.shape[0]/2)
         bs_size_t = int(feat_t.shape[0]/2)
-
+        """
         for label in range(self.num_classes):
             label_num = 0
             label_features = torch.zeros_like(self.class_map[label, :])
@@ -333,4 +334,9 @@ class DASupConClsHead(BaseHead):
                 else:
                     self.class_map_t[label, :] = self.class_map_t[label, :] * (1 - momentum) \
                                                + label_features_t / label_num_t * momentum
-
+        """
+        refs = torch.LongTensor(range(self.num_classes)).unsqueeze(1).to(torch.device('cuda'))
+        gt = label_s.repeat(2)
+        mask = (gt == refs).unsqueeze(2).type(torch.cuda.FloatTensor)
+        feature = feat_s.detach().unsqueeze(0)
+        self.class_map = self.class_map * self.momentum + torch.sum(feature * mask, dim=1) * (1 - self.momentum)

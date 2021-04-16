@@ -9,7 +9,7 @@ from mmcv.runner import DADistSamplerSeedHook, build_optimizer, build_runner
 from mmcls.core import (DADistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
                         Fp16OptimizerHook)
 from mmcls.datasets import build_dataloader, build_dataset
-from mmcls.utils import get_root_logger, convert_splitbn_model
+from mmcls.utils import get_root_logger, convert_splitnorm_model
 
 
 def da_set_random_seed(seed, deterministic=False):
@@ -58,17 +58,20 @@ def da_train_model(model,
             seed=cfg.seed) for ds in dataset_s
     ]
 
-    data_loaders_t = [
-        build_dataloader(
-            ds,
-            cfg.data_t.samples_per_gpu,
-            cfg.data_t.workers_per_gpu,
-            # cfg.gpus will be ignored if distributed
-            num_gpus=len(cfg.gpu_ids),
-            dist=distributed,
-            round_up=True,
-            drop_last=True,
-            seed=cfg.seed) for ds in dataset_t
+    if cfg.source_only:
+       data_loaders_t = None
+    else:
+        data_loaders_t = [
+            build_dataloader(
+                ds,
+                cfg.data_t.samples_per_gpu,
+                cfg.data_t.workers_per_gpu,
+                # cfg.gpus will be ignored if distributed
+                num_gpus=len(cfg.gpu_ids),
+                dist=distributed,
+                round_up=True,
+                drop_last=True,
+                seed=cfg.seed) for ds in dataset_t
     ]
 
 
@@ -97,9 +100,15 @@ def da_train_model(model,
         elif 'loss' in name:
             continue
         elif 'head' in name:
-            optimizer.update({name: build_optimizer(module, cfg.optimizer_head)})
-        elif 'fc' in name:
-            optimizer.update({name: build_optimizer(module, cfg.optimizer_fc)})
+            for n, m in module.named_children():
+                if n == 'w_loss':
+                    optimizer.update({name + '_' + n: build_optimizer(m, cfg.optimizer_w)})
+                elif n == 'contrastive_projector':
+                    optimizer.update({name + '_' + n: build_optimizer(m, cfg.optimizer_contrastivep)})
+                elif n == 'fc':
+                    optimizer.update({name + '_' + n: build_optimizer(m, cfg.optimizer_fc)})
+                elif n == 'domain_loss':
+                    optimizer.update({name + '_' + n: build_optimizer(m, cfg.optimizer_domain)})
         else:
             raise ValueError(
                 f' "{name}" configuration is not defined in config')
@@ -150,14 +159,14 @@ def da_train_model(model,
         val_dataloader = []
         val_dataloader.append(build_dataloader(
             val_dataset_s,
-            samples_per_gpu=cfg.data_s.samples_per_gpu,
+            samples_per_gpu=cfg.data_s.samples_validate_per_gpu,
             workers_per_gpu=cfg.data_s.workers_per_gpu,
             dist=distributed,
             shuffle=False,
             round_up=True))
         val_dataloader.append(build_dataloader(
             val_dataset_t,
-            samples_per_gpu=cfg.data_t.samples_per_gpu,
+            samples_per_gpu=cfg.data_t.samples_validate_per_gpu,
             workers_per_gpu=cfg.data_t.workers_per_gpu,
             dist=distributed,
             shuffle=False,
@@ -170,12 +179,12 @@ def da_train_model(model,
 
     #if cfg.resume_from:
     #    runner.resume(cfg.resume_from)
-    #if cfg.load_from:
-    #    runner.load_checkpoint(cfg.load_from)
-    if cfg.aux:
-        runner.model.module.backbone = convert_splitbn_model(runner.model.module.backbone)
     if cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
+    if cfg.aux:
+        runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
+    #if cfg.load_from:
+    #    runner.load_checkpoint(cfg.load_from)
     if cfg.resume_from:
         runner.resume(cfg.resume_from)
     runner.run(data_loaders_s, data_loaders_t, cfg.workflow)

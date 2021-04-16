@@ -51,7 +51,7 @@ class SplitGroupNorm(torch.nn.GroupNorm):
                 out.append(a(input))
             return torch.cat(out,dim=0)
 
-def convert_splitbn_model(module, num_splits=2):
+def convert_splitnorm_model(module, num_splits=2):
     """
     Recursively traverse module and its children to replace all instances of
     ``torch.nn.modules.batchnorm._BatchNorm`` with `SplitBatchnorm2d`.
@@ -94,6 +94,6 @@ def convert_splitbn_model(module, num_splits=2):
                 aux.bias.data = module.bias.data.clone().detach()
 
     for name, child in module.named_children():
-        mod.add_module(name, convert_splitbn_model(child, num_splits=num_splits))
+        mod.add_module(name, convert_splitnorm_model(child, num_splits=num_splits))
     del module
     return mod

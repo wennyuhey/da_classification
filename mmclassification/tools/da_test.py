@@ -13,7 +13,7 @@ from mmcls.apis import multi_gpu_test, da_single_gpu_test
 from mmcls.core import wrap_fp16_model
 from mmcls.datasets import build_dataloader, build_dataset
 from mmcls.models import build_classifier
-from mmcls.utils import convert_splitbn_model
+from mmcls.utils import convert_splitnorm_model
 
 
 def parse_args():
@@ -67,6 +67,7 @@ def main():
 
     # build the dataloader
     dataset = build_dataset(cfg.data_t.test)
+    mmcv.dump(dataset.get_gt_labels(), 'gt_labels.pkl')
     data_loader = build_dataloader(
         dataset,
         samples_per_gpu=cfg.data_t.samples_per_gpu,
@@ -81,7 +82,7 @@ def main():
     if fp16_cfg is not None:
         wrap_fp16_model(model)
     if cfg.aux:
-       model.backbone = convert_splitbn_model(model.backbone) 
+       model.backbone = convert_splitnorm_model(model.backbone) 
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
 
     if not distributed:

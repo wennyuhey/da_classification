@@ -2,8 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-
-def accuracy_numpy(pred, target, topk):
+def accuracy_numpy(pred, target, topk, classwise):
     res = []
     maxk = max(topk)
     num = pred.shape[0]
@@ -12,11 +11,21 @@ def accuracy_numpy(pred, target, topk):
     for k in topk:
         correct_k = np.logical_or.reduce(
             pred_label[:, :k] == target.reshape(-1, 1), axis=1)
-        res.append(correct_k.sum() * 100. / num)
+        if classwise == False:
+            res.append(correct_k.sum() * 100. / num)
+        else:
+            acc = 0
+            for c in range(classwise):
+                mask = (target == c)
+                c_num = mask.sum()
+                res_class = correct_k * mask
+                acc += res_class.sum() * 100. / c_num
+            res.append(acc/classwise)
     return res
+    
+        
 
-
-def accuracy_torch(pred, target, topk=1):
+def accuracy_torch(pred, target, topk, classwise):
     res = []
     maxk = max(topk)
     num = pred.size(0)
@@ -26,11 +35,20 @@ def accuracy_torch(pred, target, topk=1):
 
     for k in topk:
         correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-        res.append(correct_k.mul_(100. / num))
+        if classwise == False:
+            res.append(correct_k.mul_(100. / num))
+        else:
+            acc = 0
+            for c in range(classwise):
+                mask = (target == c)
+                res_class = correct_k * mask
+                c_num = mask.sum()
+                acc += res_class.sum() * 100. / c_num
+            res.append(acc/classwise)
     return res
 
 
-def accuracy(pred, target, topk=1):
+def accuracy(pred, target, topk=1, classwise=False):
     """Calculate accuracy according to the prediction and target
 
     Args:
@@ -55,9 +73,9 @@ def accuracy(pred, target, topk=1):
         return_single = False
 
     if isinstance(pred, torch.Tensor) and isinstance(target, torch.Tensor):
-        res = accuracy_torch(pred, target, topk)
+        res = accuracy_torch(pred, target, topk, classwise)
     elif isinstance(pred, np.ndarray) and isinstance(target, np.ndarray):
-        res = accuracy_numpy(pred, target, topk)
+        res = accuracy_numpy(pred, target, topk, classwise)
     else:
         raise TypeError('pred and target should both be'
                         'torch.Tensor or np.ndarray')

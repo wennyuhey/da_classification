@@ -13,9 +13,9 @@ def conv_wm_2d(input,
                dilation=1,
                groups=1,
                eps=1e-5):
-    #c_in = weight.size(0)
-    #weight_flat = weight.view(c_in, -1)
-    #weight = weight / torch.norm(weight_flat)
+    c_in = weight.size(0)
+    weight_flat = weight.view(c_in, -1)
+    weight = weight / torch.norm(weight_flat)
     return F.conv2d(input, weight, bias, stride, padding, dilation, groups)
 
 

@@ -177,3 +177,24 @@ class SupConDataset:
         return result
     def __len__(self):
         return len(self.dataset)
+
+@DATASETS.register_module()
+class SupConDADataset:
+    def __init__(self, dataset, times):
+        self.dataset = dataset
+        self.times = times
+        self.CLASSES = dataset.CLASSES
+
+    def __getitem__(self, idx):
+        data = {'source': [], 'target': []}
+        for i in range(self.times):
+            for d in ['source', 'target']:
+                data[d].append(self.dataset[idx][d]['img'])
+        result = self.dataset[idx]
+        for d in ['source', 'target']:
+            result[d]['img'] = data[d]
+        return result
+    def __len__(self):
+        return len(self.dataset)
+
+    

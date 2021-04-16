@@ -8,6 +8,7 @@ from .dist_utils import (allreduce_grads, allreduce_params, get_dist_info,
                          init_dist, master_only)
 from .epoch_based_runner import EpochBasedRunner, Runner
 from .da_epoch_based_runner import DAEpochBasedRunner, DARunner
+from .cat_epoch_based_runner import CatEpochBasedRunner
 from .fp16_utils import LossScaler, auto_fp16, force_fp32, wrap_fp16_model
 from .hooks import (HOOKS, CheckpointHook, ClosureHook, DistSamplerSeedHook,
                     EMAHook, Fp16OptimizerHook, Hook, IterTimerHook,
@@ -36,5 +37,6 @@ __all__ = [
     'set_random_seed', 'auto_fp16', 'force_fp32', 'wrap_fp16_model',
     'Fp16OptimizerHook', 'SyncBuffersHook', 'EMAHook', 'build_runner',
     'RUNNERS', 'allreduce_grads', 'allreduce_params', 'LossScaler'
-    'DABaseRunner', 'DAEpochBasedRunner, DARunner', 'DADistSamplerSeedHook'
+    'DABaseRunner', 'DAEpochBasedRunner, DARunner', 'DADistSamplerSeedHook',
+    'CatEpochBasedRunner'
 ]

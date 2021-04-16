@@ -57,9 +57,9 @@ class DABaseClassifier(nn.Module, metaclass=ABCMeta):
         else:
             raise NotImplementedError('aug_test has not been implemented')
 
-    def forward(self, img_s, img_t=None, return_loss=True, **kwargs):
+    def forward(self, img_s, gt_label_s=None, img_t=None, gt_label_t=None, return_loss=True, **kwargs):
         if return_loss:
-            return self.forward_train(img_s, img_t, **kwargs)
+            return self.forward_train(img_s, gt_label_s, img_t, gt_label_t, **kwargs)
         else:
             return self.forward_test(img_s, **kwargs)
 
@@ -92,11 +92,18 @@ class DABaseClassifier(nn.Module, metaclass=ABCMeta):
 
     def train_step(self, data_s, data_t=None, optimizer=None, **kwargs):
 
-        losses = self(**data_s, **data_t)
+        if data_t is not None:
+            losses = self(**data_s, **data_t)
+        else:
+            losses = self(**data_s)
+
         loss, log_vars = self._parse_losses(losses)
 
         if isinstance(data_s['img_s'], list):
-            samples = len(data_s['img_s'][0].data) + len(data_t['img_t'][0].data)
+            if data_t is None:
+                samples = len(data_s['img_s'][0].data)
+            else:
+                samples = len(data_s['img_s'][0].data) + len(data_t['img_t'][0].data)
         else:
             samples = len(data_s['img_s'].data)
         outputs = dict(

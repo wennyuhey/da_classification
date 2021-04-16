@@ -1,7 +1,10 @@
 # dataset settings
 dataset_type = 'PartialOffice'
+#img_norm_cfg = dict(
+#    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], to_rgb=True)
 img_norm_cfg = dict(
-    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], to_rgb=True)
+    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='RandomResizedCrop', size=224),
@@ -43,4 +46,4 @@ data = dict(
         type=dataset_type,
         data_prefix='data/office31/webcam/images',
         pipeline=test_pipeline))
-evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)), classwise=31)

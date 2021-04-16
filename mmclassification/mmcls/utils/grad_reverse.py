@@ -11,4 +11,4 @@ class GradReverse(Function):
     def backward(ctx, grad_output):
         #pdb.set_trace()
         #result, = ctx.saved_tensors
-        return (grad_output * (1))
+        return (grad_output * (-1))
