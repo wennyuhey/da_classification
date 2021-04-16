@@ -56,7 +56,7 @@ def main():
     if cfg.get('cudnn_benchmark', False):
         torch.backends.cudnn.benchmark = True
     cfg.model.pretrained = None
-    cfg.data_t.test.test_mode = True
+    cfg.data.test.test_mode = True
 
     # init distributed env first, since logger depends on the dist info.
     if args.launcher == 'none':
@@ -66,12 +66,11 @@ def main():
         init_dist(args.launcher, **cfg.dist_params)
 
     # build the dataloader
-    dataset = build_dataset(cfg.data_t.test)
-    mmcv.dump(dataset.get_gt_labels(), 'gt_labels.pkl')
+    dataset = build_dataset(cfg.data.test)
     data_loader = build_dataloader(
         dataset,
-        samples_per_gpu=cfg.data_t.samples_per_gpu,
-        workers_per_gpu=cfg.data_t.workers_per_gpu,
+        samples_per_gpu=cfg.data.samples_validate_per_gpu,
+        workers_per_gpu=cfg.data.workers_per_gpu,
         dist=distributed,
         shuffle=False,
         round_up=False)

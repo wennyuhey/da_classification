@@ -8,6 +8,7 @@ def accuracy_numpy(pred, target, topk, classwise):
     num = pred.shape[0]
     pred_label = pred.argsort(axis=1)[:, -maxk:][:, ::-1]
 
+    class_rate = []
     for k in topk:
         correct_k = np.logical_or.reduce(
             pred_label[:, :k] == target.reshape(-1, 1), axis=1)
@@ -20,8 +21,9 @@ def accuracy_numpy(pred, target, topk, classwise):
                 c_num = mask.sum()
                 res_class = correct_k * mask
                 acc += res_class.sum() * 100. / c_num
+                class_rate.append(res_class.sum()*100./c_num)
             res.append(acc/classwise)
-    return res
+    return res, class_rate
     
         
 
@@ -32,7 +34,7 @@ def accuracy_torch(pred, target, topk, classwise):
     _, pred_label = pred.topk(maxk, dim=1)
     pred_label = pred_label.t()
     correct = pred_label.eq(target.view(1, -1).expand_as(pred_label)).contiguous()
-
+    class_rate = []
     for k in topk:
         correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
         if classwise == False:
@@ -44,8 +46,9 @@ def accuracy_torch(pred, target, topk, classwise):
                 res_class = correct_k * mask
                 c_num = mask.sum()
                 acc += res_class.sum() * 100. / c_num
+                class_rate.append(res_class.sum()*100/c_num)
             res.append(acc/classwise)
-    return res
+    return res, class_rate
 
 
 def accuracy(pred, target, topk=1, classwise=False):
