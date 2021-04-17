@@ -108,11 +108,13 @@ class DASupConClsHead(BaseHead):
                  num_classes,
                  mlp_dim,
                  momentum=0.9,
+                 threshold=0.8,
                  sup_source_loss=None,
                  con_target_loss=None,
                  dist_loss=None,
                  w_loss=None,
                  cls_loss=None,
+                 select_feat=None,
                  topk=(1, ),
                  frozen_map=True,
                  domain_loss=None):
@@ -126,6 +128,8 @@ class DASupConClsHead(BaseHead):
         self.frozen_map = frozen_map
         self.momentum = momentum
         self.domain_loss = None
+        self.select_feat = None
+        self.threshold = threshold
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -141,6 +145,8 @@ class DASupConClsHead(BaseHead):
         if domain_loss is not None:
             self.domain_loss = build_loss(domain_loss)
             self.gradreverse = GradReverse(1)
+        if select_feat is not None:
+            self.feat_select = build_loss(select_feat)
 
         self.num_classes = num_classes
         self.in_channels = in_channels
@@ -218,9 +224,48 @@ class DASupConClsHead(BaseHead):
             #losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
 
         if self.sup_source_loss is not None:
-            features_mlp_source = torch.cat((mlp_source[0: batchsize,:].unsqueeze(1),
-                                            mlp_source[batchsize:,:].unsqueeze(1)), dim=1)
-            losses['supcon_source_loss'] = self.sup_source_loss(features_mlp_source, source_label)
+         #   features_mlp_source = torch.cat((mlp_source[0: batchsize,:].unsqueeze(1),
+         #                                   mlp_source[batchsize:,:].unsqueeze(1)), dim=1)
+         #   losses['supcon_source_loss'] = self.sup_source_loss(features_mlp_source, source_label)
+
+            """
+            cls_t_top = cls_target[0:batchsize, :]
+            cls_t_bot = cls_target[batchsize:, :]
+            cls_t, idx_t = torch.max(cls_t_top, dim=1)
+            cls_b, idx_b = torch.max(cls_t_bot, dim=1)
+            cls_mask = cls_t > cls_b
+            idx = idx_t * cls_mask + idx_b * ~cls_mask
+            cls = torch.maximum(cls_t, cls_b)
+            selected_idx = torch.where(cls > self.threshold)[0]
+            target_selected_t = torch.index_select(mlp_target[0:batchsize], 0, selected_idx)
+            target_selected_b = torch.index_select(mlp_target[batchsize:,:], 0, selected_idx)
+            label_t = torch.index_select(idx, 0, selected_idx)
+            features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize,:], target_selected_t)).unsqueeze(1), 
+                                     torch.cat((mlp_source[batchsize:,:], target_selected_b)).unsqueeze(1)), dim=1)
+            label_combine = torch.cat((source_label, label_t))
+            losses['combined_supcon_loss'] = self.sup_source_loss(features_mlp, label_combine)
+            """
+            mlp_t_top = mlp_target[0: batchsize, :]
+            mlp_t_bot = mlp_target[batchsize: , :]
+            dist_top = torch.matmul(mlp_t_top, self.class_map.T)
+            dist_bot = torch.matmul(mlp_t_bot, self.class_map.T)
+
+            cls_t, idx_t = torch.max(dist_top, dim=1)
+            cls_b, idx_b = torch.max(dist_bot, dim=1)
+
+            cls_mask = cls_t > cls_b
+            idx = idx_t * cls_mask + idx_b * ~cls_mask
+            cls = torch.maximum(cls_t, cls_b)
+
+            selected_idx = torch.where(cls > self.threshold)[0]
+
+            target_selected_t = torch.index_select(mlp_target[0:batchsize], 0, selected_idx)
+            target_selected_b = torch.index_select(mlp_target[batchsize:,:], 0, selected_idx)
+            label_t = torch.index_select(idx, 0, selected_idx)
+            features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize,:], target_selected_t)).unsqueeze(1),
+                                     torch.cat((mlp_source[batchsize:,:], target_selected_b)).unsqueeze(1)), dim=1)
+            label_combine = torch.cat((source_label, label_t))
+            losses['combined_supcon_loss'] = self.sup_source_loss(features_mlp, label_combine)
 
         """
         features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize, :],
@@ -231,6 +276,7 @@ class DASupConClsHead(BaseHead):
         losses['test_supcon_loss'] = self.sup_source_loss(features_mlp, gt_label)
         """
         #classification loss
+       
         if self.cls_loss is not None:
             if(source_label.size(0) != cls_source.size(0)):
                 source_cls_label = source_label.repeat(2)
@@ -242,6 +288,7 @@ class DASupConClsHead(BaseHead):
         #acc = self.compute_accuracy(features_source, source_cls_label)
         #assert len(acc) == len(self.topk)
         #losses['accuracy'] = {f'top-{k}': a for k, a in zip(self.topk, acc)}
+        #losses['target_consistency_loss'] = 0.1 * ((cls_t_top - cls_t_bot)**2).mean()
 
         return losses
 
@@ -292,49 +339,22 @@ class DASupConClsHead(BaseHead):
 
     def simple_test(self, img):
         """Test without augmentation."""
-        cls_score = self.fc(img)
-        #cls_dist = torch.matmul(img_mlp, class_map.T)
-        #pred = F.softmax(cls_dist, dim=1)
-        if isinstance(cls_score, list):
-            cls_score = sum(cls_score) / float(len(cls_score))
-        pred = F.softmax(cls_score, dim=1) if cls_score is not None else None
+        #cls_score = self.fc(img)
+        img_mlp = self.contrastive_projector(img)
+        cls_dist = torch.matmul(img_mlp, self.class_map.T)
+        pred = F.softmax(cls_dist, dim=1)
+        #if isinstance(cls_score, list):
+        #    cls_score = sum(cls_score) / float(len(cls_score))
+        #pred = F.softmax(cls_score, dim=1) if cls_score is not None else None
         if torch.onnx.is_in_onnx_export():
             return pred
         pred = list(pred.detach().cpu().numpy())
         return pred
 
     def accumulate_map(self, feat_s, feat_t, label_s, label_t):
-        momentum = 0.1
+        momentum = 0.01
         bs_size_s = int(feat_s.shape[0]/2)
         bs_size_t = int(feat_t.shape[0]/2)
-        """
-        for label in range(self.num_classes):
-            label_num = 0
-            label_features = torch.zeros_like(self.class_map[label, :])
-            label_num_t = 0
-            label_features_t = torch.zeros_like(self.class_map_t[label, :])
-            for idx, cat in enumerate(label_s):
-                if cat == label:
-                    label_num += 2
-                    label_features += feat_s[idx, :].detach() + feat_s[idx + bs_size_s, :].detach()
-            if label_num != 0:
-                if sum(self.class_map[label, :]) == 0:
-                    self.class_map[label, :] = label_features / label_num
-                else:
-                    self.class_map[label, :] = self.class_map[label, :] * (1 - momentum) \
-                                               + label_features / label_num * momentum
-
-            for idx, cat in enumerate(label_t):
-                if cat == label:
-                    label_num_t += 2
-                    label_features_t += feat_t[idx, :].detach() + feat_t[idx + bs_size_s, :].detach()
-            if label_num != 0:
-                if sum(self.class_map_t[label, :]) == 0:
-                    self.class_map_t[label, :] = label_features_t / label_num_t
-                else:
-                    self.class_map_t[label, :] = self.class_map_t[label, :] * (1 - momentum) \
-                                               + label_features_t / label_num_t * momentum
-        """
         refs = torch.LongTensor(range(self.num_classes)).unsqueeze(1).to(torch.device('cuda'))
         gt = label_s.repeat(2)
         mask = (gt == refs).unsqueeze(2).type(torch.cuda.FloatTensor)

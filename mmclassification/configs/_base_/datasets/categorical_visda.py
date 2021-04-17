@@ -39,4 +39,4 @@ data = dict(
         type=dataset_type_val,
         data_prefix='data/visda/validation',
         pipeline=test_pipeline))
-evaluation = dict(classwise=12, by_epoch=False, interval=1000, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(classwise=12, interval=1, metric='accuracy', metric_options=dict(topk=(1)))

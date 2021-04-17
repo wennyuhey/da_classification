@@ -76,14 +76,17 @@ def accuracy(pred, target, topk=1, classwise=False):
         return_single = False
 
     if isinstance(pred, torch.Tensor) and isinstance(target, torch.Tensor):
-        res = accuracy_torch(pred, target, topk, classwise)
+        res, class_rate = accuracy_torch(pred, target, topk, classwise)
     elif isinstance(pred, np.ndarray) and isinstance(target, np.ndarray):
-        res = accuracy_numpy(pred, target, topk, classwise)
+        res, class_rate = accuracy_numpy(pred, target, topk, classwise)
     else:
         raise TypeError('pred and target should both be'
                         'torch.Tensor or np.ndarray')
 
-    return res[0] if return_single else res
+    if return_single:
+        return res[0], class_rate
+    else:
+        return res, class_rate
 
 
 class Accuracy(nn.Module):

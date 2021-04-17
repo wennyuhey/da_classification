@@ -139,6 +139,6 @@ def classwise_train_model(model,
         runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
     #if cfg.load_from:
     #    runner.load_checkpoint(cfg.load_from)
-    #if cfg.resume_from:
-    #    runner.resume(cfg.resume_from)
+    if cfg.resume_from:
+        runner.resume(cfg.resume_from)
     runner.run(data_loaders, cfg.workflow)
