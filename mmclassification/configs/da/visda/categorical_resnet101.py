@@ -8,6 +8,7 @@ model=dict(
         num_classes=12,
         in_channels=2048,
         mlp_dim=128,
+        threshold=4,
         sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #con_target_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=0.3),
         #dist_loss=dict(type='CosDistLoss', temperature=0.1, loss_weight=0.1),
@@ -16,7 +17,8 @@ model=dict(
         frozen_map=False,
         topk=(1)))
 
-load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'
+load_from = '/lustre/S/wangyu/checkpoint/classification/da/classwise/cls+supcon/map/epoch_2.pth'
+
 aux = True
 validation=True
 source_only = False

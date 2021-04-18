@@ -258,6 +258,7 @@ class DASupConClsHead(BaseHead):
             cls = torch.maximum(cls_t, cls_b)
 
             selected_idx = torch.where(cls > self.threshold)[0]
+            unselected_idx = torch.where(cls < self.threshold)[0]
 
             target_selected_t = torch.index_select(mlp_target[0:batchsize], 0, selected_idx)
             target_selected_b = torch.index_select(mlp_target[batchsize:,:], 0, selected_idx)
@@ -266,7 +267,20 @@ class DASupConClsHead(BaseHead):
                                      torch.cat((mlp_source[batchsize:,:], target_selected_b)).unsqueeze(1)), dim=1)
             label_combine = torch.cat((source_label, label_t))
             losses['combined_supcon_loss'] = self.sup_source_loss(features_mlp, label_combine)
-
+            if len(unselected_idx) != 0:
+                target_unselected_t = torch.index_select(mlp_target[0:batchsize], 0, unselected_idx)
+                target_unselected_b = torch.index_select(mlp_target[batchsize:, :], 0, unselected_idx)
+                unselected_mlp = torch.cat((target_unselected_t.unsqueeze(1), target_unselected_b.unsqueeze(1)), dim=1)
+                pseudo_label = torch.arange(unselected_idx.shape[0]).to(torch.device('cuda'))
+                losses['target_con_loss'] = self.sup_source_loss(unselected_mlp, pseudo_label)
+                """
+                target_cls_t = torch.index_select(cls_target[0:batchsize, :], 0, unselected_idx)
+                target_cls_t = F.softmax(target_cls_t, dim=1)
+                target_cls_b = torch.index_select(cls_target[batchsize:, :], 0, unselected_idx)
+                target_cls_b = F.softmax(target_cls_b, dim=1)
+                losses['target_ce'] = self.soft_cls_loss(target_cls_t, target_cls_b.detach())
+                """
+ 
         """
         features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize, :],
                                   mlp_target[0: batchsize, :])).unsqueeze(1),
