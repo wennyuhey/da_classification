@@ -2,7 +2,7 @@
 model = dict(
     type='DASupConClsClassifier',
     backbone = dict(
-        type='ResNet',
+        type='AuxResNet',
         depth=50,
         num_stages=4,
         out_indices=(3, ),

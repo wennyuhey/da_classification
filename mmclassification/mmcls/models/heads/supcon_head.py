@@ -113,6 +113,7 @@ class DASupConClsHead(BaseHead):
                  con_target_loss=None,
                  dist_loss=None,
                  w_loss=None,
+                 soft_ce=None,
                  cls_loss=None,
                  select_feat=None,
                  topk=(1, ),
@@ -147,6 +148,8 @@ class DASupConClsHead(BaseHead):
             self.gradreverse = GradReverse(1)
         if select_feat is not None:
             self.feat_select = build_loss(select_feat)
+        if soft_ce is not None:
+            self.soft_cls = build_loss(soft_ce)
 
         self.num_classes = num_classes
         self.in_channels = in_channels
@@ -174,7 +177,8 @@ class DASupConClsHead(BaseHead):
             nn.ReLU(inplace=True),
             nn.Linear(self.in_channels, self.mlp_dim))
 
-        self.fc = nn.Linear(self.in_channels, self.num_classes)
+        self.fc = nn.Linear(self.mlp_dim, self.num_classes)
+        #self.fc = nn.Linear(self.in_channels, self.num_classes)
         """
         if self.w_loss is not None:
             self.w_projector = nn.Sequential(
@@ -258,7 +262,7 @@ class DASupConClsHead(BaseHead):
             cls = torch.maximum(cls_t, cls_b)
 
             selected_idx = torch.where(cls > self.threshold)[0]
-            unselected_idx = torch.where(cls < self.threshold)[0]
+            unselected_idx = torch.where(cls < 4.7)[0]
 
             target_selected_t = torch.index_select(mlp_target[0:batchsize], 0, selected_idx)
             target_selected_b = torch.index_select(mlp_target[batchsize:,:], 0, selected_idx)
@@ -268,6 +272,7 @@ class DASupConClsHead(BaseHead):
             label_combine = torch.cat((source_label, label_t))
             losses['combined_supcon_loss'] = self.sup_source_loss(features_mlp, label_combine)
             if len(unselected_idx) != 0:
+                """
                 target_unselected_t = torch.index_select(mlp_target[0:batchsize], 0, unselected_idx)
                 target_unselected_b = torch.index_select(mlp_target[batchsize:, :], 0, unselected_idx)
                 unselected_mlp = torch.cat((target_unselected_t.unsqueeze(1), target_unselected_b.unsqueeze(1)), dim=1)
@@ -276,10 +281,16 @@ class DASupConClsHead(BaseHead):
                 """
                 target_cls_t = torch.index_select(cls_target[0:batchsize, :], 0, unselected_idx)
                 target_cls_t = F.softmax(target_cls_t, dim=1)
+                label_uncertain_t = torch.index_select(idx_t, 0, unselected_idx)
                 target_cls_b = torch.index_select(cls_target[batchsize:, :], 0, unselected_idx)
                 target_cls_b = F.softmax(target_cls_b, dim=1)
-                losses['target_ce'] = self.soft_cls_loss(target_cls_t, target_cls_b.detach())
-                """
+                label_uncertain_b = torch.index_select(idx_b, 0, unselected_idx)
+                class_map_t = self.class_map[label_uncertain_t]
+                class_map_b = self.class_map[label_uncertain_b]
+                cls_map_t = F.softmax(self.fc(class_map_t))
+                cls_map_b = F.softmax(self.fc(class_map_b))
+                losses['target_map_ce'] = (self.soft_cls(target_cls_t, cls_map_b.detach()) + self.soft_cls(target_cls_b, cls_map_t.detach())) / 2
+                #losses['target_ce'] = self.soft_cls_loss(target_cls_t, target_cls_b.detach())
  
         """
         features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize, :],
@@ -308,14 +319,16 @@ class DASupConClsHead(BaseHead):
 
     def forward_train(self, features_source, features_target, source_label=None, target_label=None):
         
-        cls_source = self.fc(features_source)
+        #cls_source = self.fc(features_source)
         mlp_source = self.contrastive_projector(features_source)
         mlp_source = mlp_source / mlp_source.norm(dim=1, keepdim=True)
+        cls_source = self.fc(mlp_source)
 
         if features_target is not None:
-            cls_target = self.fc(features_target)
+            #cls_target = self.fc(features_target)
             mlp_target = self.contrastive_projector(features_target)
             mlp_target = mlp_target / mlp_target.norm(dim=1, keepdim=True)
+            cls_target = self.fc(mlp_target)
         else:
             cls_target = None
             mlp_target = None
