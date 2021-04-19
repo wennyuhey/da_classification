@@ -31,19 +31,19 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
                  times=2,
                  class_set=None,
                  classes=None,
-                 ann_file_s=None,
-                 ann_file_t=None,
+                 source_prefix=None,
+                 target_prefix=None,
                  test_mode=False):
         super(ClasswiseDADataset, self).__init__()
-        self.ann_file_s = ann_file_s
-        self.ann_file_t = ann_file_t
         self.data_prefix = data_prefix
+        self.source_prefix = source_prefix
+        self.target_prefix = target_prefix
         self.test_mode = test_mode
         self.pipeline = Compose(pipeline)
         self.CLASSES = self.get_classes(classes)
-        self.source_data, self.source_class_list = self.load_annotations('source') #self.source_data data_info->list(dict), indexiable; self.*class_list -> np.array
-        self.target_data, self.target_class_list = self.load_annotations('target')
-        self.source_count = np.insert(np.cumsum(self.source_class_list), 0, 0).astype(int) #np.array [0, 10, 20, 400]
+        self.source_data, self.source_class_list = self.load_annotations(source_prefix)
+        self.target_data, self.target_class_list = self.load_annotations(target_prefix)
+        self.source_count = np.insert(np.cumsum(self.source_class_list), 0, 0).astype(int)
         self.target_count = np.insert(np.cumsum(self.target_class_list), 0, 0).astype(int)
         self.times = times
 

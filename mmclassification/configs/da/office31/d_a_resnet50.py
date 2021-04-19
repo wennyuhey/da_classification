@@ -1,4 +1,3 @@
 _base_ = [
-    './targetonly_resnet50.py', '../_base_/datasets/da_office31_d_a.py',
+    './sourceonly_resnet50.py', '../../_base_/datasets/da_office31_a_d.py',
 ]
-load_from = '/lustre/S/wangyu/checkpoint/classification/da/supcon_sourceonly/office/dslr/epoch_20.pth'

@@ -162,8 +162,8 @@ class DAEvalHook(Hook):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import da_single_gpu_test
-        #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
-        results_s = None
+        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        #results_s = None
         results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
         self.evaluate(runner, results_s, results_t)
 
@@ -172,8 +172,8 @@ class DAEvalHook(Hook):
             return
         from mmcls.apis import da_single_gpu_test
         runner.log_buffer.clear()
-        #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
-        results_s = None
+        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        #results_s = None
         results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
         self.evaluate(runner, results_s, results_t)
 

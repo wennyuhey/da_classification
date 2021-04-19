@@ -160,12 +160,14 @@ def cat_train_model(model,
         runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
     #if cfg.resume_from:
     #    runner.resume(cfg.resume_from)
-    if cfg.load_from:
-        runner.load_checkpoint(cfg.load_from)
-    if cfg.aux:
-        runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
     #if cfg.load_from:
     #    runner.load_checkpoint(cfg.load_from)
+    import pdb
+    pdb.set_trace()
+    if cfg.aux:
+        runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
+    if cfg.load_from:
+        runner.load_checkpoint(cfg.load_from)
     #if cfg.resume_from:
     #    runner.resume(cfg.resume_from)
     runner.run(data_loaders, cfg.workflow)

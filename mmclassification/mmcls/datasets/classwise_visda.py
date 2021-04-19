@@ -19,17 +19,15 @@ class ClasswiseVisDA(ClasswiseDADataset):
         'plant', 'skateboard', 'train', 'truck'
     ]
 
-    domain_folder = {'source': 'train', 'target': 'validation'}
 
     def load_annotations(self, domain):
         data_infos = []
-        domain_folder = {'source': 'train', 'target': 'validation'}
-        file_list = open(osp.join(self.data_prefix, domain_folder[domain], 'image_list.txt'), 'r')
+        file_list = open(osp.join(self.data_prefix, domain, 'image_list.txt'), 'r')
         imgs = file_list.readlines()
         class_list = np.zeros(len(self.CLASSES))
         for img in imgs:
             img_prefix, label = img.replace('\n', '').split(' ')
-            info = {'img_prefix': osp.join(self.data_prefix, domain_folder[domain])}
+            info = {'img_prefix': osp.join(self.data_prefix, domain)}
             info['img_info'] = {'filename': img_prefix}
             info['gt_label'] = np.array(int(label), dtype=np.int64)
             class_list[int(label)] += 1

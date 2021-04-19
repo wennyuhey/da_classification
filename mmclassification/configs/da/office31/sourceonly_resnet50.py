@@ -12,7 +12,9 @@ model=dict(
         #con_target_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=0.1),
         #dist_loss=dict(type='CosDistLoss', temperature=0.1, loss_weight=0.1),
         #w_loss=dict(type='WDistLoss', loss_weight=1)
+        soft_ce=dict(type='SoftCELoss', loss_weight=1),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
+        frozen_map=False,
         topk=(1)))
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/pretrain_res50x1_new.pth'

@@ -17,6 +17,8 @@ from .categorical_loader import CategoricalDataLoader
 from .classwise import ClasswiseDADataset
 from .classwise_visda import ClasswiseVisDA
 from .categorical_sampler import CategoricalSampler
+from .classwise_office import ClasswiseOfficeAW
+from .classwise_office_ad import ClasswiseOfficeAD
 
 __all__ = [
     'BaseDataset', 'ImageNet', 'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST',
@@ -25,5 +27,5 @@ __all__ = [
     'PIPELINES', 'SVHN', 'Office31', 'SupConDataset', 'PartialOffice', 'VisDA',
     'PartialVisDA', 'CategoricalVisDADataset','CategoricalDataLoader',
     'CategoricalDADataset', 'ClasswiseDADataset', 'ClasswiseVisDA', 'CategoricalSampler',
-    'build_classwise_dataloader'
+    'build_classwise_dataloader', 'ClasswiseOfficeAW', 'ClasswiseOfficeAD'
 ]

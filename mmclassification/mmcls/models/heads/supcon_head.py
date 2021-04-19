@@ -110,6 +110,7 @@ class DASupConClsHead(BaseHead):
                  momentum=0.9,
                  threshold=0.8,
                  sup_source_loss=None,
+                 combined_loss=None,
                  con_target_loss=None,
                  dist_loss=None,
                  w_loss=None,
@@ -129,8 +130,10 @@ class DASupConClsHead(BaseHead):
         self.frozen_map = frozen_map
         self.momentum = momentum
         self.domain_loss = None
+        self.combined_loss = None
         self.select_feat = None
         self.threshold = threshold
+        self.soft_cls = None
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -150,6 +153,8 @@ class DASupConClsHead(BaseHead):
             self.feat_select = build_loss(select_feat)
         if soft_ce is not None:
             self.soft_cls = build_loss(soft_ce)
+        if combined_loss is not None:
+            self.combined_loss = build_loss(combined_loss)
 
         self.num_classes = num_classes
         self.in_channels = in_channels
@@ -228,9 +233,9 @@ class DASupConClsHead(BaseHead):
             #losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
 
         if self.sup_source_loss is not None:
-         #   features_mlp_source = torch.cat((mlp_source[0: batchsize,:].unsqueeze(1),
-         #                                   mlp_source[batchsize:,:].unsqueeze(1)), dim=1)
-         #   losses['supcon_source_loss'] = self.sup_source_loss(features_mlp_source, source_label)
+            features_mlp_source = torch.cat((mlp_source[0: batchsize,:].unsqueeze(1),
+                                            mlp_source[batchsize:,:].unsqueeze(1)), dim=1)
+            losses['supcon_source_loss'] = self.sup_source_loss(features_mlp_source, source_label)
 
             """
             cls_t_top = cls_target[0:batchsize, :]
@@ -249,6 +254,7 @@ class DASupConClsHead(BaseHead):
             label_combine = torch.cat((source_label, label_t))
             losses['combined_supcon_loss'] = self.sup_source_loss(features_mlp, label_combine)
             """
+        if self.combined_loss is not None:
             mlp_t_top = mlp_target[0: batchsize, :]
             mlp_t_bot = mlp_target[batchsize: , :]
             dist_top = torch.matmul(mlp_t_top, self.class_map.T)
@@ -270,7 +276,9 @@ class DASupConClsHead(BaseHead):
             features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize,:], target_selected_t)).unsqueeze(1),
                                      torch.cat((mlp_source[batchsize:,:], target_selected_b)).unsqueeze(1)), dim=1)
             label_combine = torch.cat((source_label, label_t))
-            losses['combined_supcon_loss'] = self.sup_source_loss(features_mlp, label_combine)
+            losses['combined_supcon_loss'] = self.combined_loss(features_mlp, label_combine)
+
+        if self.soft_cls is not None:
             if len(unselected_idx) != 0:
                 """
                 target_unselected_t = torch.index_select(mlp_target[0:batchsize], 0, unselected_idx)
@@ -287,10 +295,9 @@ class DASupConClsHead(BaseHead):
                 label_uncertain_b = torch.index_select(idx_b, 0, unselected_idx)
                 class_map_t = self.class_map[label_uncertain_t]
                 class_map_b = self.class_map[label_uncertain_b]
-                cls_map_t = F.softmax(self.fc(class_map_t))
-                cls_map_b = F.softmax(self.fc(class_map_b))
+                cls_map_t = F.softmax(self.fc(class_map_t), dim=1)
+                cls_map_b = F.softmax(self.fc(class_map_b), dim=1)
                 losses['target_map_ce'] = (self.soft_cls(target_cls_t, cls_map_b.detach()) + self.soft_cls(target_cls_b, cls_map_t.detach())) / 2
-                #losses['target_ce'] = self.soft_cls_loss(target_cls_t, target_cls_b.detach())
  
         """
         features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize, :],

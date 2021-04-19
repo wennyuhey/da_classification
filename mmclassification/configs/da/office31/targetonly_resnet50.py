@@ -14,10 +14,12 @@ model=dict(
         #con_target_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=0.1),
         #dist_loss=dict(type='CosDistLoss', temperature=0.1, maxk=1, loss_weight=0.5),
         #w_loss=dict(type='WDistLoss', in_channels=128, slice_num=128, loss_weight=1),
-        soft_ce=dict(type='SoftCELoss'), loss_weight=1.0),
+        soft_ce=dict(type='SoftCELoss', loss_weight=1.0),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=0.1),
         topk=(1)))
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/pretrain_res50x1_new.pth'
 #load_from = '/lustre/S/wangyu/PretrainedModels/resnet50-19c8e357_new.pth'
-aux = False
+load_from = 'work_dirs/a_w_resnet50/latest.pth'
+aux = True
+source_only=False

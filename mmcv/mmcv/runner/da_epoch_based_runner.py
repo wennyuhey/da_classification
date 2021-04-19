@@ -24,7 +24,7 @@ class DAEpochBasedRunner(DABaseRunner):
     def run_iter(self, data_s, train_mode, data_t=None, **kwargs):
         data_s['img_s'] = data_s.pop('img')
         data_s['gt_label_s'] = data_s.pop('gt_label')
-        if self.source_only is False:
+        if self.source_only is not True:
             data_t['img_t'] = data_t.pop('img')
             data_t['gt_label_t'] = data_t.pop('gt_label')
         if self.batch_processor is not None:

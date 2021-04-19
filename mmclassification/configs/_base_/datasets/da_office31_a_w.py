@@ -21,7 +21,7 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data_s = dict(
-    samples_per_gpu=64,
+    samples_per_gpu=30,
     workers_per_gpu=2,
     samples_validate_per_gpu=500,
     train=dict(
@@ -41,7 +41,7 @@ data_s = dict(
         data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline))
 data_t = dict(
-    samples_per_gpu=64,
+    samples_per_gpu=30,
     workers_per_gpu=2,
     samples_validate_per_gpu=500,
     train=dict(

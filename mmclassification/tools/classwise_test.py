@@ -66,14 +66,24 @@ def main():
         init_dist(args.launcher, **cfg.dist_params)
 
     # build the dataloader
-    dataset = build_dataset(cfg.data.val)
-    data_loader = build_dataloader(
-        dataset,
+    dataset_s = build_dataset(cfg.data.val)
+    dataset_t = build_dataset(cfg.data.test)
+    data_loader_s = build_dataloader(
+        dataset_s,
         samples_per_gpu=cfg.data.samples_validate_per_gpu,
         workers_per_gpu=cfg.data.workers_per_gpu,
         dist=distributed,
         shuffle=False,
         round_up=False)
+
+    data_loader_t = build_dataloader(
+        dataset_t,
+        samples_per_gpu=cfg.data.samples_validate_per_gpu,
+        workers_per_gpu=cfg.data.workers_per_gpu,
+        dist=distributed,
+        shuffle=False,
+        round_up=False)
+
 
     # build the model and load checkpoint
     model = build_classifier(cfg.model)
@@ -86,7 +96,8 @@ def main():
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
-        outputs = da_single_gpu_test(model, data_loader)
+        outputs_s = da_single_gpu_test(model, data_loader_s)
+        outputs_t = da_single_gpu_test(model, data_loader_t)
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
@@ -98,9 +109,12 @@ def main():
     rank, _ = get_dist_info()
     if rank == 0:
         if args.metric != '':
-            results, _ = dataset.evaluate(outputs, args.metric, classwise=cfg.evaluation.classwise)
-            for topk, acc in results.items():
-                print(f'\n{topk} accuracy: {acc:.2f}')
+            results_s, _ = dataset_s.evaluate(outputs_s, args.metric, classwise=cfg.evaluation.classwise)
+            for topk, acc in results_s.items():
+                print(f'\nsource: {topk} accuracy: {acc:.2f}')
+            results_t, _ = dataset_t.evaluate(outputs_t, args.metric, classwise=cfg.evaluation.classwise)
+            for topk, acc in results_t.items():
+                print(f'\ntarget: {topk} accuracy: {acc:.2f}')
         else:
             scores = np.vstack(outputs)
             pred_score = np.max(scores, axis=1)
