@@ -212,6 +212,7 @@ class DASupConClsHead(BaseHead):
              reverse_source=None,
              reverse_target=None):
 
+
         batchsize = int(cls_source.shape[0]/2)
 
         losses = dict()
@@ -295,9 +296,12 @@ class DASupConClsHead(BaseHead):
                 label_uncertain_b = torch.index_select(idx_b, 0, unselected_idx)
                 class_map_t = self.class_map[label_uncertain_t]
                 class_map_b = self.class_map[label_uncertain_b]
-                cls_map_t = F.softmax(self.fc(class_map_t), dim=1)
-                cls_map_b = F.softmax(self.fc(class_map_b), dim=1)
+                #cls_map_t = F.softmax(self.fc(class_map_t), dim=1)
+                #cls_map_b = F.softmax(self.fc(class_map_b), dim=1)
+                cls_map_t = self.fc(class_map_t)
+                cls_map_b = self.fc(class_map_b)
                 losses['target_map_ce'] = (self.soft_cls(target_cls_t, cls_map_b.detach()) + self.soft_cls(target_cls_b, cls_map_t.detach())) / 2
+
  
         """
         features_mlp = torch.cat((torch.cat((mlp_source[0: batchsize, :],
@@ -375,18 +379,18 @@ class DASupConClsHead(BaseHead):
         """Test without augmentation."""
         #cls_score = self.fc(img)
         img_mlp = self.contrastive_projector(img)
+        #cls_score = self.fc(img_mlp)
         cls_dist = torch.matmul(img_mlp, self.class_map.T)
         pred = F.softmax(cls_dist, dim=1)
         #if isinstance(cls_score, list):
         #    cls_score = sum(cls_score) / float(len(cls_score))
         #pred = F.softmax(cls_score, dim=1) if cls_score is not None else None
-        if torch.onnx.is_in_onnx_export():
-            return pred
+        #if torch.onnx.is_in_onnx_export():
+        #    return pred
         pred = list(pred.detach().cpu().numpy())
         return pred
 
     def accumulate_map(self, feat_s, feat_t, label_s, label_t):
-        momentum = 0.01
         bs_size_s = int(feat_s.shape[0]/2)
         bs_size_t = int(feat_t.shape[0]/2)
         refs = torch.LongTensor(range(self.num_classes)).unsqueeze(1).to(torch.device('cuda'))

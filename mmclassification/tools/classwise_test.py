@@ -98,6 +98,10 @@ def main():
         model = MMDataParallel(model, device_ids=[0])
         outputs_s = da_single_gpu_test(model, data_loader_s)
         outputs_t = da_single_gpu_test(model, data_loader_t)
+        for i in range(len(outputs_s)):
+            outputs_s[i] = outputs_s[i].cpu()
+        for i in range(len(outputs_t)):
+            outputs_t[i] = outputs_t[i].cpu()
     else:
         model = MMDistributedDataParallel(
             model.cuda(),

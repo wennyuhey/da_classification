@@ -94,7 +94,6 @@ def main():
     if args.launcher == 'none':
         distributed = False
     else:
-        print(cfg.dist_params)
         distributed = True
         init_dist(args.launcher, **cfg.dist_params)
     # create work_dir

@@ -43,9 +43,11 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         self.CLASSES = self.get_classes(classes)
         self.source_data, self.source_class_list = self.load_annotations(source_prefix)
         self.target_data, self.target_class_list = self.load_annotations(target_prefix)
+        #self.target_data, _ = self.load_annotations(target_prefix)
         self.source_count = np.insert(np.cumsum(self.source_class_list), 0, 0).astype(int)
-        self.target_count = np.insert(np.cumsum(self.target_class_list), 0, 0).astype(int)
+        #self.target_count = np.insert(np.cumsum(self.target_class_list), 0, 0).astype(int)
         self.times = times
+        self.pseudo_target = None
 
         self.source = [] #[np.array, np.array, ..]classwise
         self.target = []
@@ -80,28 +82,42 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         data_len = class_sample * len(self.class_set)
         for cls in self.class_set:
             ori_s = np.arange(self.source_count[cls], self.source_count[cls+1])
-            ori_t = np.arange(self.target_count[cls], self.target_count[cls+1])
+            #ori_t = np.arange(self.target_count[cls], self.target_count[cls+1])
 
             ori_s_int = np.tile(ori_s, int(class_sample//self.source_class_list[cls]))
-            ori_t_int = np.tile(ori_t, int(class_sample//self.target_class_list[cls]))
+            #ori_t_int = np.tile(ori_t, int(class_sample//self.target_class_list[cls]))
 
             ori_s_res = np.array(random.choices(ori_s, k = int(class_sample%self.source_class_list[cls])))
-            ori_t_res = np.array(random.choices(ori_t, k = int(class_sample%self.target_class_list[cls])))
+            #ori_t_res = np.array(random.choices(ori_t, k = int(class_sample%self.target_class_list[cls])))
 
 
             self.source.append(np.hstack((ori_s_int, ori_s_res)))
-            self.target.append(np.hstack((ori_t_int, ori_t_res)))
+            #self.target.append(np.hstack((ori_t_int, ori_t_res)))
 
         self.source_cls = np.array(self.source).astype(int)
-        #ori_t = np.arange(self.target_class_list[-1])
-        #ori_t_int = np.tile(ori_t, int(data_len//len(ori_t)))
-        #ori_t_res = np.array(random.choices(ori_t, k=int(data_len%len(ori_t))))
-        #self.target = np.hstack((ori_t_int, ori_t_res)).astype(int)
-        self.target_cls = np.array(self.target).astype(int)
-
         self.source = self.source_cls.flatten()
-        self.target = self.target_cls.flatten()
-        random.shuffle(self.target)
+
+        if self.pseudo_target is None:
+            ori_t = np.arange(len(self.target_data))
+            ori_t_int = np.tile(ori_t, int(data_len//len(ori_t)))
+            ori_t_res = np.array(random.choices(ori_t, k=int(data_len%len(ori_t))))
+            self.target = np.hstack((ori_t_int, ori_t_res)).astype(int)
+            random.shuffle(self.target)
+        else:
+            idx_target = np.arange(len(self.target_data))
+            ref = np.arange(len(self.class_set)).reshape(-1, 1)
+            class_mask = np.zeros((len(self.class_set), len(self.target_data)), dtype=bool)
+            for i in range(5):
+                class_mask = np.logical_or(class_mask, (self.pseudo_target[:, i] == ref))
+            target_class_list = class_mask.sum(axis=1).flatten()
+            for cls in self.class_set:
+                ori_t = idx_target[np.where(class_mask[cls] == True)]
+                ori_t_int = np.tile(ori_t, int(class_sample//target_class_list[cls]))
+                #ori_t_res = np.array(random.choices(ori_t, k = int(class_sample%target_class_list[cls])))
+                ori_t_res = ori_t[0:int(class_sample%target_class_list[cls])]
+                self.target.append(np.hstack((ori_t_int, ori_t_res)))
+            self.target_cls = np.array(self.target).astype(int)
+            self.target = self.target_cls.flatten()
 
     def get_gt_labels(self):
         """Get all ground-truth labels (categories).
@@ -175,12 +191,15 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         target_label=None,
         class_set=None):
         if class_set is None:
-            self.class_set = self.CLASSES
+            pass
         else:
             self.class_set = class_set
 
         if target_label is not None:
-            pass
+            pred_label = target_label.argsort(axis=1)[:, -5:][:, ::-1]
+            import pdb
+            pdb.set_trace()
+            self.pseudo_target = pred_label
 
         self.category_preprocess()
 

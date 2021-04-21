@@ -21,7 +21,7 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data_s = dict(
-    samples_per_gpu=30,
+    samples_per_gpu=90,
     workers_per_gpu=30,
     samples_validate_per_gpu=500,
     train=dict(
@@ -41,7 +41,7 @@ data_s = dict(
         data_prefix='data/visda/train',
         pipeline=test_pipeline))
 data_t = dict(
-    samples_per_gpu=30,
+    samples_per_gpu=90,
     workers_per_gpu=30,
     samples_validate_per_gpu=500,
     train=dict(

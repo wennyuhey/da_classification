@@ -101,6 +101,7 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
 
         self.source = self.source_cls.flatten()
         self.target = self.target_cls.flatten()
+        random.shuffle(self.source)
         random.shuffle(self.target)
 
     def get_gt_labels(self):

@@ -43,9 +43,11 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         self.CLASSES = self.get_classes(classes)
         self.source_data, self.source_class_list = self.load_annotations(source_prefix)
         self.target_data, self.target_class_list = self.load_annotations(target_prefix)
+        self.target_data, _ = self.load_annotations(target_prefix)
         self.source_count = np.insert(np.cumsum(self.source_class_list), 0, 0).astype(int)
         self.target_count = np.insert(np.cumsum(self.target_class_list), 0, 0).astype(int)
         self.times = times
+        self.pseudo_target = None
 
         self.source = [] #[np.array, np.array, ..]classwise
         self.target = []
@@ -75,8 +77,8 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         del self.target
         self.source = []
         self.target = []
-        #class_sample = max(max(self.source_class_list[self.class_set]), max(self.target_class_list[self.class_set]))
-        class_sample = max(max(self.source_class_list[self.class_set]), 100)
+        class_sample = max(max(self.source_class_list[self.class_set]), max(self.target_class_list[self.class_set]))
+        #class_sample = max(max(self.source_class_list[self.class_set]), 100)
         data_len = class_sample * len(self.class_set)
         for cls in self.class_set:
             ori_s = np.arange(self.source_count[cls], self.source_count[cls+1])
@@ -93,15 +95,10 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
             self.target.append(np.hstack((ori_t_int, ori_t_res)))
 
         self.source_cls = np.array(self.source).astype(int)
-        #ori_t = np.arange(self.target_class_list[-1])
-        #ori_t_int = np.tile(ori_t, int(data_len//len(ori_t)))
-        #ori_t_res = np.array(random.choices(ori_t, k=int(data_len%len(ori_t))))
-        #self.target = np.hstack((ori_t_int, ori_t_res)).astype(int)
-        self.target_cls = np.array(self.target).astype(int)
-
         self.source = self.source_cls.flatten()
+
+        self.target_cls = np.array(self.target).astype(int)
         self.target = self.target_cls.flatten()
-        random.shuffle(self.target)
 
     def get_gt_labels(self):
         """Get all ground-truth labels (categories).
@@ -175,12 +172,15 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         target_label=None,
         class_set=None):
         if class_set is None:
-            self.class_set = self.CLASSES
+            pass
         else:
             self.class_set = class_set
 
         if target_label is not None:
-            pass
+            pred_label = target_label.argsort(axis=1)[:, -5:][:, ::-1]
+            import pdb
+            pdb.set_trace()
+            self.pseudo_target = pred_label
 
         self.category_preprocess()
 

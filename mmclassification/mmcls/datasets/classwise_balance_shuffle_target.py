@@ -101,7 +101,7 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
 
         self.source = self.source_cls.flatten()
         self.target = self.target_cls.flatten()
-        random.shuffle(self.target)
+        random.shuffle(self.source)
 
     def get_gt_labels(self):
         """Get all ground-truth labels (categories).

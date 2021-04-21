@@ -152,11 +152,12 @@ def collect_results_gpu(result_part, size):
         return ordered_results
 
 
-def da_single_gpu_test(model, data_loader, show=False, out_dir=None):
+def da_single_gpu_test(model, data_loader, bar_show=True, show=False, out_dir=None):
     model.eval()
     results = []
     dataset = data_loader.dataset
-    prog_bar = mmcv.ProgressBar(len(dataset))
+    if bar_show:
+        prog_bar = mmcv.ProgressBar(len(dataset))
     for i, data in enumerate(data_loader):
         data = {'img_s' :  data['img']}
         with torch.no_grad():
@@ -165,10 +166,10 @@ def da_single_gpu_test(model, data_loader, show=False, out_dir=None):
 
         if show or out_dir:
             pass  # TODO
-
         batch_size = data['img_s'].size(0)
-        for _ in range(batch_size):
-            prog_bar.update()
+        if bar_show:
+            for _ in range(batch_size):
+                prog_bar.update()
     return results
 
 

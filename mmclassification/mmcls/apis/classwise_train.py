@@ -7,7 +7,7 @@ from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmcv.runner import DADistSamplerSeedHook, build_optimizer, build_runner
 
 from mmcls.core import (DADistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
-                        Fp16OptimizerHook)
+                        Fp16OptimizerHook, DatasetHook)
 from mmcls.datasets import build_dataloader, build_dataset, build_classwise_dataloader
 from mmcls.utils import get_root_logger, convert_splitnorm_model
 
@@ -108,29 +108,33 @@ def classwise_train_model(model,
         runner.register_hook(DADistSamplerSeedHook())
 
     # register eval hooks
-    if validate:
-        val_dataset_s = build_dataset(cfg.data.val, dict(test_mode=True))
-        val_dataset_t = build_dataset(cfg.data.test, dict(test_mode=True))
-        val_dataloader = []
-        val_dataloader.append(build_dataloader(
-            val_dataset_s,
-            samples_per_gpu=cfg.data.samples_validate_per_gpu,
-            workers_per_gpu=cfg.data.workers_per_gpu,
-            dist=distributed,
-            shuffle=False,
-            round_up=True))
-        val_dataloader.append(build_dataloader(
-            val_dataset_t,
-            samples_per_gpu=cfg.data.samples_validate_per_gpu,
-            workers_per_gpu=cfg.data.workers_per_gpu,
-            dist=distributed,
-            shuffle=False,
-            round_up=True))
+    #if validate:
+    val_dataset_s = build_dataset(cfg.data.val, dict(test_mode=True))
+    val_dataset_t = build_dataset(cfg.data.test, dict(test_mode=True))
+    val_dataloader_s = build_dataloader(
+        val_dataset_s,
+        samples_per_gpu=cfg.data.samples_validate_per_gpu,
+        workers_per_gpu=cfg.data.workers_per_gpu,
+        dist=distributed,
+        shuffle=False,
+        round_up=True)
+    val_dataloader_t = build_dataloader(
+        val_dataset_t,
+        samples_per_gpu=cfg.data.samples_validate_per_gpu,
+        workers_per_gpu=cfg.data.workers_per_gpu,
+        dist=distributed,
+        shuffle=False,
+        round_up=True)
+    val_dataloader = [val_dataloader_s, val_dataloader_t]
 
-        eval_cfg = cfg.get('evaluation', {})
-        #eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
-        eval_hook = DADistEvalHook if distributed else DAEvalHook
-        runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
+    eval_cfg = cfg.get('evaluation', {})
+    #eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
+    eval_hook = DADistEvalHook if distributed else DAEvalHook
+    runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
+
+    #cluster_cfg = cfg.get('cluster', {})
+    #runner.register_hook(DatasetHook(val_dataloader_t, **cluster_cfg))
+
     #if cfg.resume_from:
     #    runner.resume(cfg.resume_from)
     #if cfg.load_from:
