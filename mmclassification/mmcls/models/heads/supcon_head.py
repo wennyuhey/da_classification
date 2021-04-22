@@ -119,7 +119,8 @@ class DASupConClsHead(BaseHead):
                  select_feat=None,
                  topk=(1, ),
                  frozen_map=True,
-                 domain_loss=None):
+                 domain_loss=None,
+                 mlp_cls=True):
         super(DASupConClsHead, self).__init__()
 
         self.sup_source_loss = None
@@ -134,6 +135,7 @@ class DASupConClsHead(BaseHead):
         self.select_feat = None
         self.threshold = threshold
         self.soft_cls = None
+        self.mlp_flag = mlp_cls
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -182,8 +184,10 @@ class DASupConClsHead(BaseHead):
             nn.ReLU(inplace=True),
             nn.Linear(self.in_channels, self.mlp_dim))
 
-        self.fc = nn.Linear(self.mlp_dim, self.num_classes)
-        #self.fc = nn.Linear(self.in_channels, self.num_classes)
+        if self.mlp_flag:
+            self.fc = nn.Linear(self.mlp_dim, self.num_classes)
+        else:
+            self.fc = nn.Linear(self.in_channels, self.num_classes)
         """
         if self.w_loss is not None:
             self.w_projector = nn.Sequential(
@@ -330,16 +334,22 @@ class DASupConClsHead(BaseHead):
 
     def forward_train(self, features_source, features_target, source_label=None, target_label=None):
         
-        #cls_source = self.fc(features_source)
         mlp_source = self.contrastive_projector(features_source)
         mlp_source = mlp_source / mlp_source.norm(dim=1, keepdim=True)
-        cls_source = self.fc(mlp_source)
+
+        if self.mlp_flag:
+            cls_source = self.fc(mlp_source)
+        else:
+            cls_source = self.fc(features_source)
 
         if features_target is not None:
-            #cls_target = self.fc(features_target)
             mlp_target = self.contrastive_projector(features_target)
             mlp_target = mlp_target / mlp_target.norm(dim=1, keepdim=True)
-            cls_target = self.fc(mlp_target)
+
+            if self.mlp_flag:
+                cls_target = self.fc(mlp_target)
+            else:
+                cls_target = self.fc(features_target)
         else:
             cls_target = None
             mlp_target = None
@@ -375,18 +385,25 @@ class DASupConClsHead(BaseHead):
 
         return losses
 
-    def simple_test(self, img):
+    def distance_test(self, img):
         """Test without augmentation."""
-        #cls_score = self.fc(img)
         img_mlp = self.contrastive_projector(img)
-        #cls_score = self.fc(img_mlp)
         cls_dist = torch.matmul(img_mlp, self.class_map.T)
         pred = F.softmax(cls_dist, dim=1)
-        #if isinstance(cls_score, list):
-        #    cls_score = sum(cls_score) / float(len(cls_score))
-        #pred = F.softmax(cls_score, dim=1) if cls_score is not None else None
-        #if torch.onnx.is_in_onnx_export():
-        #    return pred
+        pred = list(pred.detach().cpu().numpy())
+        return pred
+
+    def fc_test(self, img):
+        if self.mlp_flag:
+            img_mlp = self.contrastive_projector(img)
+            cls_score = self.fc(img_mlp)
+        else:
+            cls_score = self.fc(img)
+        if isinstance(cls_score, list):
+            cls_score = sum(cls_score) / float(len(cls_score))
+        pred = F.softmax(cls_score, dim=1) if cls_score is not None else None
+        if torch.onnx.is_in_onnx_export():
+            return pred
         pred = list(pred.detach().cpu().numpy())
         return pred
 
@@ -403,5 +420,5 @@ class DASupConClsHead(BaseHead):
         update_feature = torch.sum(feature * mask, dim=1) / (num_mask + 10e-6)
         self.class_map = map_mask * update_feature + \
                          ~map_mask * (logic_mask * self.class_map + ~logic_mask*(self.class_map * self.momentum + update_feature * (1 - self.momentum)))
-        self.class_map = self.class_map/self.class_map.norm(dim=1, keepdim=True)
+#        self.class_map = self.class_map/self.class_map.norm(dim=1, keepdim=True)
         self.class_map = self.class_map.detach()

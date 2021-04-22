@@ -13,6 +13,7 @@ model=dict(
         sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
         frozen_map=False,
+        mlp_cls=False,
         topk=(1)))
 
 load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'

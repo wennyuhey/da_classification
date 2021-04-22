@@ -81,7 +81,12 @@ class DASupConClsClassifier(DABaseClassifier):
 
         return losses
 
-    def simple_test(self, img):
+    def simple_test(self, img, test_mode='distance'):
         """Test without augmentation."""
         x = self.extract_feat(img, torch.tensor([1]))
-        return self.head.simple_test(x)
+        if test_mode == 'fc':
+            return self.head.fc_test(x)
+        elif test_mode == 'distance':
+            return self.head.distance_test(x)
+        else:
+            raise ValueError('Test mode {} is not supported'.format(test_mode))

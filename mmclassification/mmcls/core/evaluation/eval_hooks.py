@@ -12,7 +12,7 @@ class EvalHook(Hook):
         interval (int): Evaluation interval (by epochs). Default: 1.
     """
 
-    def __init__(self, dataloader, interval=1, by_epoch=True, classwise=False, **eval_kwargs):
+    def __init__(self, dataloader, interval=1, test_mode='distance', by_epoch=True, classwise=False, **eval_kwargs):
         #if not isinstance(dataloader, DataLoader):
         #    raise TypeError('dataloader must be a pytorch DataLoader, but got'
         #                    f' {type(dataloader)}')
@@ -21,6 +21,7 @@ class EvalHook(Hook):
         self.eval_kwargs = eval_kwargs
         self.by_epoch = by_epoch
         self.classwise = classwise
+        self.test_mode = test_mode
     """
     def before_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
@@ -141,7 +142,7 @@ class DAEvalHook(Hook):
         interval (int): Evaluation interval (by epochs). Default: 1.
     """
 
-    def __init__(self, dataloader, interval=1, by_epoch=True, classwise=False, **eval_kwargs):
+    def __init__(self, dataloader, interval=1, by_epoch=True, classwise=False, test_mode='distance', **eval_kwargs):
         #if not isinstance(dataloader, DataLoader):
         #    raise TypeError('dataloader must be a pytorch DataLoader, but got'
         #                    f' {type(dataloader)}')
@@ -150,21 +151,24 @@ class DAEvalHook(Hook):
         self.eval_kwargs = eval_kwargs
         self.by_epoch = by_epoch
         self.classwise = classwise
+        self.test_mode = test_mode
     """
     def before_train_epoch(self, runner):
         from mmcls.apis import da_single_gpu_test
         #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
         results_s = None
-        results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
+        import pdb
+        pdb.set_trace()
+        results_t = da_single_gpu_test(runner.model, self.dataloader[1], test_mode=self.test_mode, show=False)
         self.evaluate(runner, results_s, results_t)
     """
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import da_single_gpu_test
-        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        results_s = da_single_gpu_test(runner.model, self.dataloader[0], test_mode=self.test_mode, show=False)
         #results_s = None
-        results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
+        results_t = da_single_gpu_test(runner.model, self.dataloader[1], test_mode=self.test_mode, show=False)
         self.evaluate(runner, results_s, results_t)
 
     def after_train_iter(self, runner):
@@ -172,9 +176,9 @@ class DAEvalHook(Hook):
             return
         from mmcls.apis import da_single_gpu_test
         runner.log_buffer.clear()
-        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        results_s = da_single_gpu_test(runner.model, self.dataloader[0], test_mode=self.test_mode, show=False)
         #results_s = None
-        results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
+        results_t = da_single_gpu_test(runner.model, self.dataloader[1], test_mode=self.test_mode, show=False)
         self.evaluate(runner, results_s, results_t)
 
 
