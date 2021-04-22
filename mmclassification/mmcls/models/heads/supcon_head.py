@@ -396,5 +396,12 @@ class DASupConClsHead(BaseHead):
         refs = torch.LongTensor(range(self.num_classes)).unsqueeze(1).to(torch.device('cuda'))
         gt = label_s.repeat(2)
         mask = (gt == refs).unsqueeze(2).type(torch.cuda.FloatTensor)
+        num_mask = mask.sum(dim=1)
+        logic_mask = num_mask == 0
+        map_mask = (self.class_map.sum(dim=1) == 0).reshape(-1, 1)
         feature = feat_s.detach().unsqueeze(0)
-        self.class_map = self.class_map * self.momentum + torch.sum(feature * mask, dim=1) * (1 - self.momentum)
+        update_feature = torch.sum(feature * mask, dim=1) / (num_mask + 10e-6)
+        self.class_map = map_mask * update_feature + \
+                         ~map_mask * (logic_mask * self.class_map + ~logic_mask*(self.class_map * self.momentum + update_feature * (1 - self.momentum)))
+        self.class_map = self.class_map/self.class_map.norm(dim=1, keepdim=True)
+        self.class_map = self.class_map.detach()

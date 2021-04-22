@@ -9,8 +9,9 @@ class CategoricalSampler(Sampler):
         self.bs_per_class = batch_size
         self.class_sample = class_num
         self.batch_size = self.bs_per_class * self.class_sample
-        self.num_class= dataset.source_cls.shape[0] # number of class in the dataset
-        self.samples_per_class = dataset.source_cls.shape[1] # number of image per class
+        #self.num_class= dataset.source_cls.shape[0] # number of class in the dataset
+        self.num_class = dataset.num_classes
+        self.samples_per_class = dataset.class_sample # number of image per class
         self.batch_num = int(self.samples_per_class//self.bs_per_class) #batch number per class
         self.class_len = self.batch_num * self.bs_per_class # numbers of samples used per class
         self.length = int(self.class_len * self.num_class / self.batch_size)

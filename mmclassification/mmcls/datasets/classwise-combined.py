@@ -42,7 +42,6 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         self.test_mode = test_mode
         self.pipeline = Compose(pipeline)
         self.CLASSES = self.get_classes(classes)
-        self.num_classes = len(self.CLASSES)
         self.source_data, self.source_class_list = self.load_annotations(source_prefix)
         self.target_data, self.target_class_list = self.load_annotations(target_prefix)
         self.source_count = np.insert(np.cumsum(self.source_class_list), 0, 0).astype(int)
@@ -57,7 +56,7 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
             self.class_set = np.arange(len(self.CLASSES))
         else:
             self.class_set = class_set
-        self.category_preprocess(**self.load_mode)
+        self.category_preprocess(self.load_mode)
 
     @abstractmethod
     def load_annotations(self, domain):
@@ -74,32 +73,32 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
         return {_class: i for i, _class in enumerate(self.CLASSES)}
 
     def category_preprocess(self, target_balance, target_shuffle, source_balance, source_shuffle):
-        assert not(target_balance==False and target_shuffle==False)
-        assert not(source_balance==False and source_shuffle==False)
+        assert target_balance==False and target_shuffle==False
+        assert source_balance==False and source_shuffle==False
         del self.source
         del self.target
         self.source = []
         self.target = []
-        self.class_sample = int(max(max(self.source_class_list[self.class_set]), max(self.target_class_list[self.class_set])))
-        data_len = self.class_sample * len(self.class_set)
+        class_sample = max(max(self.source_class_list[self.class_set]), max(self.target_class_list[self.class_set]))
+        data_len = class_sample * len(self.class_set)
         if target_balance == True or source_balance == True:
             for cls in self.class_set:
                 if source_balance: 
                     ori_s = np.arange(self.source_count[cls], self.source_count[cls+1])
-                    ori_s_int = np.tile(ori_s, int(self.class_sample//self.source_class_list[cls]))
-                    ori_s_res = np.array(random.choices(ori_s, k = int(self.class_sample%self.source_class_list[cls])))
+                    ori_s_int = np.tile(ori_s, int(class_sample//self.source_class_list[cls]))
+                    ori_s_res = np.array(random.choices(ori_s, k = int(class_sample%self.source_class_list[cls])))
                     self.source.append(np.hstack((ori_s_int, ori_s_res)))
                 if target_balance:
                     ori_t = np.arange(self.target_count[cls], self.target_count[cls+1])
-                    ori_t_int = np.tile(ori_t, int(self.class_sample//self.target_class_list[cls]))
-                    ori_t_res = np.array(random.choices(ori_t, k = int(self.class_sample%self.target_class_list[cls])))
+                    ori_t_int = np.tile(ori_t, int(class_sample//self.target_class_list[cls]))
+                    ori_t_res = np.array(random.choices(ori_t, k = int(class_sample%self.target_class_list[cls])))
                     self.target.append(np.hstack((ori_t_int, ori_t_res)))
 
         if source_balance:
             self.source_cls = np.array(self.source).astype(int)
             self.source = self.source_cls.flatten()
         else:
-            ori_s = np.arange(self.source_count[-1])
+            ori_s = np.arange(self.source_class_list[-1])
             ori_s_int = np.tile(ori_s, int(data_len//len(ori_s)))
             ori_s_res = np.array(random.choices(ori_s, k=int(data_len%len(ori_s))))
             self.source = np.hstack((ori_s_int, ori_s_res)).astype(int)
@@ -108,7 +107,7 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
             self.target_cls = np.array(self.target).astype(int)
             self.target = self.target_cls.flatten()
         else:
-            ori_t = np.arange(self.target_count[-1])
+            ori_t = np.arange(self.target_class_list[-1])
             ori_t_int = np.tile(ori_t, int(data_len//len(ori_t)))
             ori_t_res = np.array(random.choices(ori_t, k=int(data_len%len(ori_t))))
             self.target = np.hstack((ori_t_int, ori_t_res)).astype(int)

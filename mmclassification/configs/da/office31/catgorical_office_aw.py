@@ -1,15 +1,14 @@
 _base_ = [
-    '../../_base_/models/da_resnet101.py', '../../_base_/schedules/cat_visda.py',
-    '../../_base_/default_runtime.py', '../../_base_/datasets/categorical_visda.py'
+    '../../_base_/models/da_resnet50.py', '../../_base_/schedules/cat_office.py',
+    '../../_base_/default_runtime.py', '../../_base_/datasets/categorical_office_aw.py'
 ]
 model=dict(
     head=dict(
         type='DASupConClsHead',
-        num_classes=12,
+        num_classes=31,
         in_channels=2048,
         mlp_dim=128,
         threshold=0,
-        momentum=0.9,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         soft_ce=dict(type='SoftCELoss', loss_weight=1),
@@ -20,16 +19,8 @@ model=dict(
         frozen_map=False,
         topk=(1)))
 
-data = dict(
-    train=dict(
-        load_mode=dict(target_balance=False,
-                       target_shuffle=True,
-                       source_balance=False,
-                       source_shuffle=True)))
-
-
-load_from = '/lustre/S/wangyu/checkpoint/classification/da/classwise/cls+supcon/map/epoch_2.pth'
-
+load_from = 'work_dirs/a_w_resnet50/latest.pth'
+#load_from = '/lustre/S/wangyu/env/contrastive/mmclassification/work_dirs/catgorical_office_aw/epoch_232.pth'
 aux = True
 validation=True
 source_only = False

@@ -1,6 +1,6 @@
 # dataset settings
-dataset_type = 'ClasswiseVisDA'
-dataset_type_val = 'VisDA'
+dataset_type = 'ClasswiseOfficeAW'
+dataset_type_val = 'PartialOffice'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -28,22 +28,18 @@ data = dict(
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
-        data_prefix='data/visda/',
-        source_prefix='train',
-        target_prefix='validation',
-        times=2,
-        load_mode=dict(target_balance=True,
-                       target_shuffle=False,
-                       source_balance=True,
-                       source_shuffle=False),
+        data_prefix='data/office31/',
+        source_prefix='amazon',
+        target_prefix='webcam',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type_val,
-        data_prefix='data/visda/train',
+        data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline),
     test=dict(
         # replace `data/val` with `data/test` for standard test
         type=dataset_type_val,
-        data_prefix='data/visda/validation',
+        data_prefix='data/office31/webcam/images',
         pipeline=test_pipeline))
-evaluation = dict(classwise=12, interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(classwise=31, interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+cluster = dict(interval=1)
