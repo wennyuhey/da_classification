@@ -418,7 +418,9 @@ class DASupConClsHead(BaseHead):
         map_mask = (self.class_map.sum(dim=1) == 0).reshape(-1, 1)
         feature = feat_s.detach().unsqueeze(0)
         update_feature = torch.sum(feature * mask, dim=1) / (num_mask + 10e-6)
-        self.class_map = map_mask * update_feature + \
-                         ~map_mask * (logic_mask * self.class_map + ~logic_mask*(self.class_map * self.momentum + update_feature * (1 - self.momentum)))
+#        self.class_map = map_mask * update_feature + \
+#                         ~map_mask * (logic_mask * self.class_map + ~logic_mask*(self.class_map * self.momentum + update_feature * (1 - self.momentum)))
 #        self.class_map = self.class_map/self.class_map.norm(dim=1, keepdim=True)
-        self.class_map = self.class_map.detach()
+      
+#        self.class_map = self.class_map.detach()
+        self.class_map = self.class_map * self.momentum + torch.sum(feature * mask, dim=1) * (1 - self.momentum)
