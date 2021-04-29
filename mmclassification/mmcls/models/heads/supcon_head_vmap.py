@@ -424,4 +424,4 @@ class DASupConClsHead(BaseHead):
 #        self.class_map = self.class_map/self.class_map.norm(dim=1, keepdim=True)
       
 #        self.class_map = self.class_map.detach()
-#        self.class_map_verse = self.class_map_verse * self.momentum + torch.sum(feature * mask, dim=1) * (1 - self.momentum)
+        self.class_map_verse = self.class_map_verse * self.momentum + torch.sum(feature * mask, dim=1) * (1 - self.momentum)

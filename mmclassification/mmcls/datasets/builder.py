@@ -116,12 +116,20 @@ def build_classwise_dataloader(dataset,
                      class_num=class_per_iter,
                      batch_size=batch_size)
 
+    rank, world_size = get_dist_info()
+
     num_workers = num_gpus * workers_per_gpu
+
+    init_fn = partial(
+        worker_init_fn, num_workers=num_workers, rank=rank,
+        seed=seed) if seed is not None else None
 
     dataloader = DataLoader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
+        worker_init_fn=init_fn,
+        pin_memory=True, 
         shuffle=False)
     return dataloader
 

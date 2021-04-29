@@ -10,7 +10,7 @@ from mmcv import Config, DictAction
 from mmcv.runner import init_dist
 
 from mmcls import __version__
-from mmcls.apis import classwise_train_model
+from mmcls.apis import classwise_train_model, set_random_seed
 from mmcls.datasets import build_dataset
 from mmcls.models import build_classifier
 from mmcls.utils import collect_env, get_root_logger
@@ -125,7 +125,7 @@ def main():
     if args.seed is not None:
         logger.info(f'Set random seed to {args.seed}, '
                     f'deterministic: {args.deterministic}')
-        cat_random_seed(args.seed, deterministic=args.deterministic)
+        set_random_seed(args.seed, deterministic=args.deterministic)
     cfg.seed = args.seed
     meta['seed'] = args.seed
 

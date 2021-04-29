@@ -155,10 +155,8 @@ class DAEvalHook(Hook):
     """
     def before_train_epoch(self, runner):
         from mmcls.apis import da_single_gpu_test
-        #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
-        results_s = None
-        import pdb
-        pdb.set_trace()
+        results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
+        #results_s = None
         results_t = da_single_gpu_test(runner.model, self.dataloader[1], test_mode=self.test_mode, show=False)
         self.evaluate(runner, results_s, results_t)
     """
@@ -176,8 +174,8 @@ class DAEvalHook(Hook):
             return
         from mmcls.apis import da_single_gpu_test
         runner.log_buffer.clear()
-        results_s = da_single_gpu_test(runner.model, self.dataloader[0], test_mode=self.test_mode, show=False)
-        #results_s = None
+        #results_s = da_single_gpu_test(runner.model, self.dataloader[0], test_mode=self.test_mode, show=False)
+        results_s = None
         results_t = da_single_gpu_test(runner.model, self.dataloader[1], test_mode=self.test_mode, show=False)
         self.evaluate(runner, results_s, results_t)
 

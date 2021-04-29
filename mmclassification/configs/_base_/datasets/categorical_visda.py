@@ -22,7 +22,7 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data = dict(
-    workers_per_gpu=30,
+    workers_per_gpu=20,
     class_per_iter=10,
     samples_per_class=9,
     samples_validate_per_gpu=500,
@@ -46,4 +46,4 @@ data = dict(
         type=dataset_type_val,
         data_prefix='data/visda/validation',
         pipeline=test_pipeline))
-evaluation = dict(classwise=12, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(by_epoch=True, classwise=12, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))

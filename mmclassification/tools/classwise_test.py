@@ -40,6 +40,7 @@ def parse_args():
         default='none',
         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--source_val', action='store_true')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -96,12 +97,15 @@ def main():
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
-        outputs_s = da_single_gpu_test(model, data_loader_s)
+        if args.source_val:
+            outputs_s = da_single_gpu_test(model, data_loader_s)
         outputs_t = da_single_gpu_test(model, data_loader_t)
+        """
         for i in range(len(outputs_s)):
             outputs_s[i] = outputs_s[i].cpu()
         for i in range(len(outputs_t)):
             outputs_t[i] = outputs_t[i].cpu()
+        """
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
@@ -113,9 +117,10 @@ def main():
     rank, _ = get_dist_info()
     if rank == 0:
         if args.metric != '':
-            results_s, _ = dataset_s.evaluate(outputs_s, args.metric, classwise=cfg.evaluation.classwise)
-            for topk, acc in results_s.items():
-                print(f'\nsource: {topk} accuracy: {acc:.2f}')
+            if args.source_val:
+                results_s, _ = dataset_s.evaluate(outputs_s, args.metric, classwise=cfg.evaluation.classwise)
+                for topk, acc in results_s.items():
+                    print(f'\nsource: {topk} accuracy: {acc:.2f}')
             results_t, _ = dataset_t.evaluate(outputs_t, args.metric, classwise=cfg.evaluation.classwise)
             for topk, acc in results_t.items():
                 print(f'\ntarget: {topk} accuracy: {acc:.2f}')
@@ -145,9 +150,8 @@ def main():
                       'Specify --out to save all results to files.')
     if args.out and rank == 0:
         print(f'\nwriting results to {args.out}')
-        mmcv.dump(outputs, args.out)
-        mmcv.dump(features, 'features.pkl')
-        mmcv.dump(dataset.get_gt_labels(), 'gt_labels.pkl')
+        mmcv.dump(outputs_t, args.out)
+        mmcv.dump(dataset_t.get_gt_labels(), 'gt_labels.pkl')
 
 
 if __name__ == '__main__':
