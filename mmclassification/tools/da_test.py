@@ -66,8 +66,7 @@ def main():
         init_dist(args.launcher, **cfg.dist_params)
 
     # build the dataloader
-    dataset = build_dataset(cfg.data_t.test)
-    mmcv.dump(dataset.get_gt_labels(), 'gt_labels.pkl')
+    dataset = build_dataset(cfg.data_s.test)
     data_loader = build_dataloader(
         dataset,
         samples_per_gpu=cfg.data_t.samples_per_gpu,
@@ -84,10 +83,12 @@ def main():
     if cfg.aux:
        model.backbone = convert_splitnorm_model(model.backbone) 
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
+    #if cfg.aux:
+    #   model.backbone = convert_splitnorm_model(model.backbone)
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
-        outputs = da_single_gpu_test(model, data_loader)
+        features, mlp_features, outputs = da_single_gpu_test(model, data_loader)
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
@@ -129,8 +130,9 @@ def main():
     if args.out and rank == 0:
         print(f'\nwriting results to {args.out}')
         mmcv.dump(outputs, args.out)
-        mmcv.dump(features, 'features.pkl')
-        mmcv.dump(dataset.get_gt_labels(), 'gt_labels.pkl')
+        mmcv.dump(features, 'features_s.pkl')
+        mmcv.dump(dataset.get_gt_labels(), 'gt_labels_s.pkl')
+        mmcv.dump(mlp_features, 'mlp_features_s.pkl')
 
 
 if __name__ == '__main__':

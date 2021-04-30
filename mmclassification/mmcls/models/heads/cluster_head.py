@@ -234,7 +234,7 @@ class DASupClusterHead(BaseHead):
         cls_dist = torch.matmul(img_mlp, self.class_map.T)
         pred = F.softmax(cls_dist, dim=1)
         pred = list(pred.detach().cpu().numpy())
-        return pred
+        return img, img_mlp, pred
 
     def fc_test(self, img):
         if self.mlp_flag:

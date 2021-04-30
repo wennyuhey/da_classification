@@ -392,7 +392,7 @@ class DASupConClsHead(BaseHead):
         cls_dist = torch.matmul(img_mlp, self.class_map.T)
         pred = F.softmax(cls_dist, dim=1)
         pred = list(pred.detach().cpu().numpy())
-        return pred
+        return list(img.cpu().numpy()), list(img_mlp.cpu().numpy()), pred
 
     def fc_test(self, img):
         if self.mlp_flag:
@@ -406,7 +406,7 @@ class DASupConClsHead(BaseHead):
         if torch.onnx.is_in_onnx_export():
             return pred
         pred = list(pred.detach().cpu().numpy())
-        return pred
+        return img, img_mlp, pred
 
     def accumulate_map(self, feat_s, feat_t, label_s, label_t):
         bs_size_s = int(feat_s.shape[0]/2)

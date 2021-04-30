@@ -155,14 +155,18 @@ def collect_results_gpu(result_part, size):
 def da_single_gpu_test(model, data_loader, test_mode='distance', bar_show=True, show=False, out_dir=None):
     model.eval()
     results = []
+    features = []
+    mlp_features = []
     dataset = data_loader.dataset
     if bar_show:
         prog_bar = mmcv.ProgressBar(len(dataset))
     for i, data in enumerate(data_loader):
         data = {'img_s' :  data['img']}
         with torch.no_grad():
-            result = model(return_loss=False, test_mode=test_mode, **data)
+            feat, mlp_feat, result = model(return_loss=False, test_mode=test_mode, **data)
         results.append(result)
+        features.append(feat)
+        mlp_features.append(mlp_feat)
 
         if show or out_dir:
             pass  # TODO
@@ -170,7 +174,7 @@ def da_single_gpu_test(model, data_loader, test_mode='distance', bar_show=True, 
         if bar_show:
             for _ in range(batch_size):
                 prog_bar.update()
-    return results
+    return features, mlp_features, results
 
 
 def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):

@@ -60,4 +60,4 @@ data_t = dict(
         type=dataset_type,
         data_prefix='data/office31/webcam/images',
         pipeline=test_pipeline))
-evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(classwise=False, interval=1, metric='accuracy', metric_options=dict(topk=(1)))
