@@ -81,12 +81,10 @@ def main():
 
     features_t = torch.from_numpy(np.vstack(pickle.load(open('features_t.pkl', 'rb'))))
     mlp_features_t = torch.from_numpy(np.vstack(pickle.load(open('mlp_features_t.pkl', 'rb'))))
-    results_t = torch.from_numpy(np.vstack(pickle.load(open('results_t.pkl', 'rb'))))
-    label_t = torch.from_numpy(pickle.load(open('gt_labels_t.pkl', 'rb')))
     features_s = torch.from_numpy(np.vstack(pickle.load(open('features_s.pkl', 'rb'))))
     mlp_features_s = torch.from_numpy(np.vstack(pickle.load(open('mlp_features_s.pkl', 'rb'))))
-    results_s = torch.from_numpy(np.vstack(pickle.load(open('results_s.pkl', 'rb'))))
     label_s = torch.from_numpy(pickle.load(open('gt_labels_s.pkl', 'rb')))
+    label_t = torch.from_numpy(pickle.load(open('gt_labels_t.pkl', 'rb')))
 
     CLASSES = np.array([
         'back_pack', 'bike', 'bike_helmet', 'bookcase', 'bottle', 'calculator', 'desk_chair',
@@ -114,6 +112,7 @@ def main():
     
     for mode in cluster_modes:
         acc_init, classwise_init, acc, classwise = k_means(features=features_s, center=center_s, gt_label=label_s, **mode)
+        mlp_acc_init, mlp_classwise_init, mlp_acc, mlp_classwise = k_means(features=mlp_features_s, center=mlp_center_s, gt_label=label_s, **mode)
         norm_ab = 'norm' if mode['norm'] else 'unnorm'
         domain = 'source'
         mode_ab = mode['mode'] + '_' + norm_ab
@@ -126,14 +125,23 @@ def main():
         worksheet.cell(line + 1, 3, acc_init.item())
         for idx, i in enumerate(classwise_init):
             worksheet.cell(line + 1, idx + 4, i.item())
+        worksheet.cell(line + 2, 2, 'mlp')
+        worksheet.cell(line + 2, 3, mlp_acc.item())
+        for idx, i in enumerate(mlp_classwise):
+            worksheet.cell(line + 2, idx + 4, i.item())
+        worksheet.cell(line + 3, 2, 'initial source center')
+        worksheet.cell(line + 3, 3, mlp_acc_init.item())
+        for idx, i in enumerate(mlp_classwise_init):
+            worksheet.cell(line + 3, idx + 4, i.item())
 
-        line += 2
+        line += 4
         
     center_t = calculate_center(features_t, label_t)
     mlp_center_t = calculate_center(mlp_features_t, label_t)
 
     for mode in cluster_modes:
         acc_init, classwise_init, acc, classwise = k_means(features=features_t, center=center_s, gt_label=label_t, **mode)
+        mlp_acc_init, mlp_classwise_init, mlp_acc, mlp_classwise = k_means(features=mlp_features_t, center=mlp_center_s, gt_label=label_t, **mode)
         norm_ab = 'norm' if mode['norm'] else 'unnorm'
         domain = 'target'
         mode_ab = mode['mode'] + '_' + norm_ab
@@ -146,9 +154,19 @@ def main():
         worksheet.cell(line + 1, 3, acc_init.item())
         for idx, i in enumerate(classwise_init):
             worksheet.cell(line + 1, idx + 4, i.item())
-        line += 2
+        worksheet.cell(line + 2, 2, 'mlp')
+        worksheet.cell(line + 2, 3, mlp_acc.item())
+        for idx, i in enumerate(mlp_classwise):
+            worksheet.cell(line + 2, idx + 4, i.item())
+        worksheet.cell(line + 3, 2, 'initial source center')
+        worksheet.cell(line + 3, 3, mlp_acc_init.item())
+        for idx, i in enumerate(mlp_classwise_init):
+            worksheet.cell(line + 3, idx + 4, i.item())
 
-    workbook.save(filename='cluster_result_source-fc-2048.xlsx')
+        line += 4
+
+
+    workbook.save(filename='cluster_result_source-fc-mlp128.xlsx')
 
 if __name__ == '__main__':
     main()

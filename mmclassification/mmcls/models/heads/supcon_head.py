@@ -395,10 +395,8 @@ class DASupConClsHead(BaseHead):
         return list(img.cpu().numpy()), list(img_mlp.cpu().numpy()), pred
 
     def fc_test(self, img):
-        import pdb
-        pdb.set_trace()
+        img_mlp = self.contrastive_projector(img)
         if self.mlp_flag:
-            img_mlp = self.contrastive_projector(img)
             cls_score = self.fc(img_mlp)
         else:
             cls_score = self.fc(img)
@@ -408,7 +406,7 @@ class DASupConClsHead(BaseHead):
         if torch.onnx.is_in_onnx_export():
             return pred
         pred = list(pred.detach().cpu().numpy())
-        return img, img_mlp, pred
+        return list(img.cpu()), list(img_mlp.cpu()), pred
 
     def accumulate_map(self, feat_s, feat_t, label_s, label_t):
         bs_size_s = int(feat_s.shape[0]/2)
