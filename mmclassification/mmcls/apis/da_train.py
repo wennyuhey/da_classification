@@ -179,12 +179,12 @@ def da_train_model(model,
 
     #if cfg.resume_from:
     #    runner.resume(cfg.resume_from)
-    #if cfg.load_from:
-    #    runner.load_checkpoint(cfg.load_from)
-    if cfg.aux:
-        runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
     if cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
+    if cfg.aux:
+        runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
+    #if cfg.load_from:
+    #    runner.load_checkpoint(cfg.load_from)
     if cfg.resume_from:
         runner.resume(cfg.resume_from)
     runner.run(data_loaders_s, data_loaders_t, cfg.workflow)
