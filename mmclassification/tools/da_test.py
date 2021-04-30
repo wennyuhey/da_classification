@@ -130,9 +130,9 @@ def main():
     if args.out and rank == 0:
         print(f'\nwriting results to {args.out}')
         mmcv.dump(outputs, args.out)
-        mmcv.dump(features, 'features_s.pkl')
-        mmcv.dump(dataset.get_gt_labels(), 'gt_labels_s.pkl')
-        mmcv.dump(mlp_features, 'mlp_features_s.pkl')
+        mmcv.dump(features, 'features_t.pkl')
+        mmcv.dump(dataset.get_gt_labels(), 'gt_labels_t.pkl')
+        mmcv.dump(mlp_features, 'mlp_features_t.pkl')
 
 
 if __name__ == '__main__':

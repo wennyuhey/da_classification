@@ -395,6 +395,8 @@ class DASupConClsHead(BaseHead):
         return list(img.cpu().numpy()), list(img_mlp.cpu().numpy()), pred
 
     def fc_test(self, img):
+        import pdb
+        pdb.set_trace()
         if self.mlp_flag:
             img_mlp = self.contrastive_projector(img)
             cls_score = self.fc(img_mlp)
