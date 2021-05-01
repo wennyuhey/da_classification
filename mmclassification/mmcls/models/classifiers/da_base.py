@@ -45,7 +45,7 @@ class DABaseClassifier(nn.Module, metaclass=ABCMeta):
         if pretrained is not None:
             print_log(f'load model from: {pretrained}', logger='root')
 
-    def forward_test(self, imgs, test_mode, **kwargs):
+    def forward_test(self, imgs, domain, test_mode, **kwargs):
         if isinstance(imgs, torch.Tensor):
             imgs = [imgs]
         for var, name in [(imgs, 'imgs')]:
@@ -53,15 +53,19 @@ class DABaseClassifier(nn.Module, metaclass=ABCMeta):
                 raise TypeError(f'{name} must be a list, but got {type(var)}')
 
         if len(imgs) == 1:
-            return self.simple_test(imgs[0], test_mode, **kwargs)
+            return self.simple_test(imgs[0], domain, test_mode, **kwargs)
         else:
             raise NotImplementedError('aug_test has not been implemented')
 
-    def forward(self, img_s, gt_label_s=None, img_t=None, gt_label_t=None, return_loss=True, test_mode='distance', **kwargs):
+    def forward(self, img_s, gt_label_s=None, img_t=None, gt_label_t=None, domain=None, return_loss=True, test_mode='distance', **kwargs):
         if return_loss:
             return self.forward_train(img_s, gt_label_s, img_t, gt_label_t, **kwargs)
         else:
-            return self.forward_test(img_s, test_mode=test_mode, **kwargs)
+            if domain == 'source':
+                domain = torch.Tensor([0])
+            else:
+                domain = torch.Tensor([1])
+            return self.forward_test(img_s, domain=domain, test_mode=test_mode, **kwargs)
 
     def _parse_losses(self, losses):
         log_vars = OrderedDict()

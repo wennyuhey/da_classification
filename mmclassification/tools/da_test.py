@@ -66,15 +66,24 @@ def main():
         init_dist(args.launcher, **cfg.dist_params)
 
     # build the dataloader
-    dataset = build_dataset(cfg.data_t.test)
-    mmcv.dump(dataset.get_gt_labels(), 'gt_labels.pkl')
-    data_loader = build_dataloader(
-        dataset,
+    dataset_s = build_dataset(cfg.data_s.test)
+    data_loader_s = build_dataloader(
+        dataset_s,
         samples_per_gpu=cfg.data_t.samples_per_gpu,
         workers_per_gpu=cfg.data_t.workers_per_gpu,
         dist=distributed,
         shuffle=False,
         round_up=False)
+
+    dataset_t = build_dataset(cfg.data_t.test)
+    data_loader_t = build_dataloader(
+        dataset_t,
+        samples_per_gpu=cfg.data_t.samples_per_gpu,
+        workers_per_gpu=cfg.data_t.workers_per_gpu,
+        dist=distributed,
+        shuffle=False,
+        round_up=False)
+
 
     # build the model and load checkpoint
     model = build_classifier(cfg.model)
@@ -84,10 +93,13 @@ def main():
     if cfg.aux:
        model.backbone = convert_splitnorm_model(model.backbone) 
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
+    #if cfg.aux:
+    #   model.backbone = convert_splitnorm_model(model.backbone)
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
-        outputs = da_single_gpu_test(model, data_loader, test_mode='fc')
+        features_s, mlp_features_s, outputs_s = da_single_gpu_test(model, data_loader_s, domain='source', test_mode='fc')
+        features_t, mlp_features_t, outputs_t = da_single_gpu_test(model, data_loader_t, domain='target', test_mode='fc')
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
@@ -99,9 +111,12 @@ def main():
     rank, _ = get_dist_info()
     if rank == 0:
         if args.metric != '':
-            results, _ = dataset.evaluate(outputs, args.metric, classwise=cfg.evaluation.classwise)
-            for topk, acc in results.items():
-                print(f'\n{topk} accuracy: {acc:.2f}')
+            results_s, _ = dataset_s.evaluate(outputs_s, args.metric, classwise=cfg.evaluation.classwise)
+            results_t, _ = dataset_t.evaluate(outputs_t, args.metric, classwise=cfg.evaluation.classwise)
+            for topk, acc in results_s.items():
+                print(f'\nsource:{topk} accuracy: {acc:.2f}')
+            for topk, acc in results_t.items():
+                print(f'\ntarget:{topk} accuracy: {acc:.2f}')
         else:
             scores = np.vstack(outputs)
             pred_score = np.max(scores, axis=1)
@@ -126,12 +141,16 @@ def main():
                       f'pred_label = {pred_label[0]} '
                       f'and pred_class = {pred_class[0]}. '
                       'Specify --out to save all results to files.')
-    if args.out and rank == 0:
-        print(f'\nwriting results to {args.out}')
-        mmcv.dump(outputs, args.out)
-        mmcv.dump(features, 'features.pkl')
-        mmcv.dump(dataset.get_gt_labels(), 'gt_labels.pkl')
+    print(f'\nwriting results to {args.out}')
+    mmcv.dump(outputs_s, 'results_s.pkl')
+    mmcv.dump(features_s, 'features_s.pkl')
+    mmcv.dump(mlp_features_s, 'mlp_features_s.pkl')
+    mmcv.dump(dataset_s.get_gt_labels(), 'gt_labels_s.pkl')
 
+    mmcv.dump(outputs_t, 'results_t.pkl')
+    mmcv.dump(features_t, 'features_t.pkl')
+    mmcv.dump(mlp_features_t, 'mlp_features_t.pkl')
+    mmcv.dump(dataset_t.get_gt_labels(), 'gt_labels_t.pkl')
 
 if __name__ == '__main__':
     main()

@@ -408,7 +408,7 @@ class DASupConClsHead(BaseHead):
         if torch.onnx.is_in_onnx_export():
             return pred
         pred = list(pred.detach().cpu().numpy())
-        return list(img.cpu()), list(img_mlp.cpu()), pred
+        return list(img.cpu().numpy()), list(img_mlp.cpu().numpy()), pred
 
     def accumulate_map(self, feat_s, feat_t, label_s, label_t):
         bs_size_s = int(feat_s.shape[0]/2)

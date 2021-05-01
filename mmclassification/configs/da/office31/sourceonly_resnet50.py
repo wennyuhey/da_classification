@@ -18,7 +18,7 @@ model=dict(
         #soft_ce=dict(type='SoftCELoss', loss_weight=1),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
         frozen_map=True,
-        mlp_cls=False,
+        mlp_cls=True,
         topk=(1)))
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/pretrain_res50x1_new.pth'

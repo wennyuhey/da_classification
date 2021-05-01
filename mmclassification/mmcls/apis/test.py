@@ -152,7 +152,7 @@ def collect_results_gpu(result_part, size):
         return ordered_results
 
 
-def da_single_gpu_test(model, data_loader, test_mode='distance', bar_show=True, show=False, out_dir=None):
+def da_single_gpu_test(model, data_loader, domain='target',  test_mode='distance', bar_show=True, show=False, out_dir=None):
     model.eval()
     results = []
     features = []
@@ -163,7 +163,7 @@ def da_single_gpu_test(model, data_loader, test_mode='distance', bar_show=True, 
     for i, data in enumerate(data_loader):
         data = {'img_s' :  data['img']}
         with torch.no_grad():
-            feat, mlp_feat, result = model(return_loss=False, test_mode=test_mode, **data)
+            feat, mlp_feat, result = model(return_loss=False, domain=domain, test_mode=test_mode, **data)
         results.append(result)
         features.append(feat)
         mlp_features.append(mlp_feat)
