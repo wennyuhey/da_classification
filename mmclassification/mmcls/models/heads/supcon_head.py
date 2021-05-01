@@ -217,6 +217,8 @@ class DASupConClsHead(BaseHead):
              reverse_target=None):
 
 
+        import pdb
+        pdb.set_trace()
         batchsize = int(cls_source.shape[0]/2)
 
         losses = dict()

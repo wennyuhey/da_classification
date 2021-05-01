@@ -25,23 +25,12 @@ class PartialOffice(BaseDataset):
 
     def load_annotations(self):
         data_infos = []
-        label_list = os.listdir(self.data_prefix)
-        for idx, label in enumerate(label_list):
+        for idx, label in enumerate(self.CLASSES):
             file_dir = osp.join(self.data_prefix, label)
-            file_list = os.listdir(file_dir)
+            file_list = sorted(os.listdir(file_dir))
             for img in file_list:
                 info = {'img_prefix': self.data_prefix}
                 info['img_info'] = {'filename': osp.join(label, img)}
                 info['gt_label'] = np.array(idx, dtype=np.int64)
                 data_infos.append(info)
-        """
-        for idx, label in enumerate(label_list):
-            file_list = os.listdir(osp.join(self.data_prefix, label, 'images'))
-            for img in file_list:
-                info = {'img_prefix': self.data_prefix}
-                info['img_info'] = {'filename': osp.join(label, img)}
-                info['gt_label'] = np.array(idx, dtype=np.int64)
-                data_infos.append(info)
-        """
-        mmcv.dump(data_infos, 'data_infos.pkl')
         return data_infos
