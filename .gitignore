@@ -1,0 +1,16 @@
+__pycache__/
+*pkl
+*log
+*npy
+*json
+build/
+*.egg-info/
+*.egg
+*.eggs/
+work_dirs/
+docs/
+*o
+*so
+*lib/
+*lib64/
+

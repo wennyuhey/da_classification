@@ -17,7 +17,7 @@ model=dict(
         #w_loss=dict(type='WDistLoss', loss_weight=1)
         #soft_ce=dict(type='SoftCELoss', loss_weight=1),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
-        frozen_map=False,
+        frozen_map=True,
         mlp_cls=False,
         topk=(1)))
 
