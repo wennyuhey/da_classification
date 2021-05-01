@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from mmcls.models.losses import Accuracy
 import torch.nn as nn
 from mmcv.cnn import normal_init
+from mmcv.cnn.bricks import build_linear_layer
 from mmcls.utils import GradReverse
 
 @HEADS.register_module()
@@ -20,12 +21,10 @@ class DASupClusterHead(BaseHead):
                  sup_source_loss=None,
                  combined_loss=None,
                  con_target_loss=None,
-                 soft_ce=None,
                  cls_loss=None,
                  select_feat=None,
                  topk=(1, ),
                  frozen_map=True,
-                 domain_loss=None,
                  mlp_cls=True):
         super(DASupClusterHead, self).__init__()
 
@@ -34,9 +33,7 @@ class DASupClusterHead(BaseHead):
         self.cls_loss = None
         self.frozen_map = frozen_map
         self.momentum = momentum
-        self.domain_loss = None
         self.combined_loss = None
-        self.select_feat = None
         self.threshold = threshold
         self.soft_cls = None
         self.mlp_flag = mlp_cls
@@ -48,13 +45,6 @@ class DASupClusterHead(BaseHead):
             self.con_target_loss = build_loss(con_target_loss)
         if cls_loss is not None:
             self.cls_loss = build_loss(cls_loss)
-        if domain_loss is not None:
-            self.domain_loss = build_loss(domain_loss)
-            self.gradreverse = GradReverse(1)
-        if select_feat is not None:
-            self.feat_select = build_loss(select_feat)
-        if soft_ce is not None:
-            self.soft_cls = build_loss(soft_ce)
         if combined_loss is not None:
             self.combined_loss = build_loss(combined_loss)
 
@@ -65,7 +55,6 @@ class DASupClusterHead(BaseHead):
         self._init_layers()
         self.init_weights()
 
-        #self.register_buffer('class_map', torch.zeros(self.num_classes, mlp_dim))
         self.register_buffer('class_map_verse', torch.zeros(self.num_classes, mlp_dim))
 
         assert isinstance(topk, (int, tuple))
@@ -88,7 +77,20 @@ class DASupClusterHead(BaseHead):
             self.fc = nn.Linear(self.mlp_dim, self.num_classes)
         else:
             self.fc = nn.Linear(self.in_channels, self.num_classes)
-        self.class_map = nn.Parameter(torch.FloatTensor(self.num_classes, self.mlp_dim).normal_(mean=0, std=0.01))
+        
+        #self.class_map = nn.Parameter(torch.FloatTensor(self.num_classes, self.in_channels).normal_(mean=0, std=0.01))
+        #self.mlp_class_map = nn.Parameter(torch.FloatTensor(self.num_classes, self.mlp_dim).normal_(mean=0, std=0.01))
+
+        #self.class_map = nn.Linear(self.in_channels, self.num_classes, bias=False)
+        #self.mlp_class_map = nn.Linear(self.mlp_dim, self.num_classes, bias=False)
+        self.class_map = build_linear_layer({'type':'NormLinear',
+                                             'in_features': self.in_channels,
+                                             'out_features': self.num_classes,
+                                             'bias': False})
+        self.mlp_class_map = build_linear_layer({'type':'NormLinear',
+                                             'in_features': self.mlp_dim,
+                                             'out_features': self.num_classes,
+                                             'bias': False})
 
     def init_weights(self):
         normal_init(self.fc, mean=0, std=0.01, bias=0)
@@ -97,6 +99,8 @@ class DASupClusterHead(BaseHead):
                 normal_init(m, mean=0, std=0.01, bias=0)
 
     def loss(self,
+             features_source,
+             features_target,
              mlp_source,
              mlp_target,
              cls_source,
@@ -107,13 +111,25 @@ class DASupClusterHead(BaseHead):
              reverse_target=None):
 
 
-        batchsize = int(cls_source.shape[0]/2)
+        batchsize = len(source_label)
 
+        feat_s = features_source.detach()
+        feat_t = features_target.detach()
+        mlp_s = mlp_source.detach()
+        feat_s = feat_s / feat_s.norm(dim=1, keepdim=True)
+        feat_t = feat_t / feat_t.norm(dim=1, keepdim=True)
+        mlp_s = mlp_s / mlp_s.norm(dim=1, keepdim=True)
         losses = dict()
 
+        #source_dist = torch.matmul(feat_s, self.class_map.T)
+        #self.class_map.weight = nn.Parameter(self.class_map.weight / self.class_map.weight.norm(dim=1, keepdim=True))
+        #self.mlp_class_map.weight = nn.Parameter(self.mlp_class_map.weight / self.mlp_class_map.weight.norm(dim=1, keepdim=True))
+        source_dist = self.class_map(features_source)
+        losses['map_kl_loss'] = self.cls_loss(source_dist, source_label)
+        #mlp_source_dist = torch.matmul(mlp_s, self.mlp_class_map.T)
+        mlp_source_dist = self.mlp_class_map(mlp_source)
+        losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label)
 
-        if self.domain_loss is not None:
-            losses['domain_loss']= self.domain_loss(reverse_source, reverse_target)
 
         if self.con_target_loss is not None:
             features_mlp_target = torch.cat((mlp_target[0: batchsize].unsqueeze(1),
@@ -152,25 +168,9 @@ class DASupClusterHead(BaseHead):
             label_combine = torch.cat((source_label, label_t))
             losses['combined_supcon_loss'] = self.combined_loss(features_mlp, label_combine)
 
-        if self.soft_cls is not None:
-            if len(unselected_idx) != 0:
-                target_cls_t = torch.index_select(cls_target[0:batchsize, :], 0, unselected_idx)
-                target_cls_t = F.softmax(target_cls_t, dim=1)
-                label_uncertain_t = torch.index_select(idx_t, 0, unselected_idx)
-                target_cls_b = torch.index_select(cls_target[batchsize:, :], 0, unselected_idx)
-                target_cls_b = F.softmax(target_cls_b, dim=1)
-                label_uncertain_b = torch.index_select(idx_b, 0, unselected_idx)
-                class_map_t = self.class_map[label_uncertain_t]
-                class_map_b = self.class_map[label_uncertain_b]
-                #cls_map_t = F.softmax(self.fc(class_map_t), dim=1)
-                #cls_map_b = F.softmax(self.fc(class_map_b), dim=1)
-                cls_map_t = self.fc(class_map_t)
-                cls_map_b = self.fc(class_map_b)
-                losses['target_map_ce'] = (self.soft_cls(target_cls_t, cls_map_b.detach()) + self.soft_cls(target_cls_b, cls_map_t.detach())) / 2
-
-        dist_target = torch.matmul(mlp_target, self.class_map.T)
-        Q = self.sinkhorn_knopp(dist_target.detach())
-        losses['target_cls_loss'] = -torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
+        # dist_target = torch.matmul(mlp_target, self.class_map.T)
+        # Q = self.sinkhorn_knopp(dist_target.detach())
+        # losses['target_cls_loss'] = -torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
        
         if self.cls_loss is not None:
             if(source_label.size(0) != cls_source.size(0)):
@@ -178,10 +178,7 @@ class DASupClusterHead(BaseHead):
             else:
                 source_cls_label = source_label
             #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
-            #losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
-            dist_source = torch.matmul(mlp_source, self.class_map.T)
-            source_score = F.softmax(dist_source, dim=1)
-            losses['source_cls_loss'] = self.cls_loss(source_score, source_cls_label)
+            losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         return losses
 
@@ -210,14 +207,13 @@ class DASupClusterHead(BaseHead):
         reverse_source = None
         reverse_target = None
 
-        if self.domain_loss is not None:
-            reverse_source = self.gradreverse.apply(features_source)
-            reverse_target = self.gradreverse.apply(features_target)
         """
         if self.frozen_map is False:
             self.accumulate_map(mlp_source, mlp_target, source_label, target_label)
         """
-        losses = self.loss(mlp_source,
+        losses = self.loss(features_source,
+                           features_target,
+                           mlp_source,
                            mlp_target, 
                            cls_source,
                            cls_target,
@@ -231,14 +227,18 @@ class DASupClusterHead(BaseHead):
     def distance_test(self, img):
         """Test without augmentation."""
         img_mlp = self.contrastive_projector(img)
-        cls_dist = torch.matmul(img_mlp, self.class_map.T)
+        #cls_dist = torch.matmul(img, self.class_map.T)
+        if self.mlp_flag:
+            cls_dist = self.mlp_class_map(img_mlp)
+        else:
+            cls_dist = self.class_map(img)
         pred = F.softmax(cls_dist, dim=1)
         pred = list(pred.detach().cpu().numpy())
         return img, img_mlp, pred
 
     def fc_test(self, img):
+        img_mlp = self.contrastive_projector(img)
         if self.mlp_flag:
-            img_mlp = self.contrastive_projector(img)
             cls_score = self.fc(img_mlp)
         else:
             cls_score = self.fc(img)
@@ -248,7 +248,7 @@ class DASupClusterHead(BaseHead):
         if torch.onnx.is_in_onnx_export():
             return pred
         pred = list(pred.detach().cpu().numpy())
-        return pred
+        return img, img_mlp, pred
 
     def accumulate_map(self, feat_s, feat_t, label_s, label_t):
         bs_size_s = int(feat_s.shape[0]/2)

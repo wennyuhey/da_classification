@@ -28,9 +28,9 @@ class ClasswiseOfficeAW(ClasswiseDADataset):
         domain_prefix = osp.join(self.data_prefix, domain, 'images')
         label_list = os.listdir(domain_prefix)
         class_list = np.zeros(len(self.CLASSES))
-        for idx, label in enumerate(label_list):
+        for idx, label in enumerate(self.CLASSES):
             file_dir = osp.join(domain_prefix, label)
-            file_list = os.listdir(file_dir)
+            file_list = sorted(os.listdir(file_dir))
             for img in file_list:
                 info = {'img_prefix': domain_prefix}
                 info['img_info'] = {'filename': osp.join(label, img)}

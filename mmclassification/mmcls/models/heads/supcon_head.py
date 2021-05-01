@@ -165,6 +165,8 @@ class DASupConClsHead(BaseHead):
         self._init_layers()
         self.init_weights()
 
+        import pdb
+        pdb.set_trace()
         self.register_buffer('class_map', torch.zeros(self.num_classes, mlp_dim))
         self.register_buffer('class_map_verse', torch.zeros(self.num_classes, mlp_dim))
 
@@ -217,9 +219,8 @@ class DASupConClsHead(BaseHead):
              reverse_target=None):
 
 
-        import pdb
-        pdb.set_trace()
-        batchsize = int(cls_source.shape[0]/2)
+        #batchsize = int(cls_source.shape[0]/2)
+        batchsize = len(source_label)
 
         losses = dict()
 

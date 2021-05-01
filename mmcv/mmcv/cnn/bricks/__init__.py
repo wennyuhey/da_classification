@@ -5,6 +5,8 @@ from .conv2d_adaptive_padding import Conv2dAdaptivePadding
 from .conv_module import ConvModule
 from .conv_ws import ConvAWS2d, ConvWS2d, conv_ws_2d
 from .conv_wm import ConvWM2d
+from .linear_norm import NormLinear
+from .linear import build_linear_layer
 from .depthwise_separable_conv_module import DepthwiseSeparableConvModule
 from .generalized_attention import GeneralizedAttention
 from .hsigmoid import HSigmoid
@@ -14,7 +16,8 @@ from .norm import build_norm_layer, is_norm
 from .padding import build_padding_layer
 from .plugin import build_plugin_layer
 from .registry import (ACTIVATION_LAYERS, CONV_LAYERS, NORM_LAYERS,
-                       PADDING_LAYERS, PLUGIN_LAYERS, UPSAMPLE_LAYERS)
+                       PADDING_LAYERS, PLUGIN_LAYERS, UPSAMPLE_LAYERS,
+                       LINEAR_LAYERS)
 from .scale import Scale
 from .swish import Swish
 from .upsample import build_upsample_layer
@@ -30,5 +33,6 @@ __all__ = [
     'UPSAMPLE_LAYERS', 'PLUGIN_LAYERS', 'Scale', 'ConvAWS2d', 'ConvWS2d',
     'conv_ws_2d', 'DepthwiseSeparableConvModule', 'Swish', 'Linear',
     'Conv2dAdaptivePadding', 'Conv2d', 'ConvTranspose2d', 'MaxPool2d',
-    'ConvTranspose3d', 'MaxPool3d', 'Conv3d', 'ConvWM2d'
+    'ConvTranspose3d', 'MaxPool3d', 'Conv3d', 'ConvWM2d', 'LINEAR_LAYERS',
+    'NormLinear', 'build_linear_layer'
 ]

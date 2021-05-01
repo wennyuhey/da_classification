@@ -64,6 +64,8 @@ def classwise_train_model(model,
                     optimizer.update({name + '_' + n: build_optimizer(module, cfg.optimizer_contrastivep)})
                 elif n == 'fc':
                     optimizer.update({name + '_' + n: build_optimizer(module, cfg.optimizer_fc)})
+                elif 'map' in n:
+                    optimizer.update({name + '_' + n: build_optimizer(module, cfg.optimizer_map)})
         else:
             raise ValueError(
                 f' "{name}" configuration is not defined in config')
@@ -137,12 +139,12 @@ def classwise_train_model(model,
 
     #if cfg.resume_from:
     #    runner.resume(cfg.resume_from)
-    #if cfg.load_from:
-    #    runner.load_checkpoint(cfg.load_from)
-    if cfg.aux:
-        runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
     if cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
+    if cfg.aux:
+        runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
+    #if cfg.load_from:
+    #    runner.load_checkpoint(cfg.load_from)
     if cfg.resume_from:
         runner.resume(cfg.resume_from)
     runner.run(data_loaders, cfg.workflow)
