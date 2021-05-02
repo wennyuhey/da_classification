@@ -113,8 +113,8 @@ class DASupClusterHead(BaseHead):
 
         batchsize = len(source_label)
 
-        feat_s = features_source.detach()
-        feat_t = features_target.detach()
+        feat_s = features_source.clone()
+        feat_t = features_target.clone()
         mlp_s = mlp_source.detach()
         feat_s = feat_s / feat_s.norm(dim=1, keepdim=True)
         feat_t = feat_t / feat_t.norm(dim=1, keepdim=True)
@@ -127,9 +127,8 @@ class DASupClusterHead(BaseHead):
         source_dist = self.class_map(features_source)
         losses['map_kl_loss'] = self.cls_loss(source_dist, source_label)
         #mlp_source_dist = torch.matmul(mlp_s, self.mlp_class_map.T)
-        mlp_source_dist = self.mlp_class_map(mlp_source)
-        losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label)
-
+        #mlp_source_dist = self.mlp_class_map(mlp_source)
+        #losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label)
 
         if self.con_target_loss is not None:
             features_mlp_target = torch.cat((mlp_target[0: batchsize].unsqueeze(1),
@@ -171,6 +170,11 @@ class DASupClusterHead(BaseHead):
         # dist_target = torch.matmul(mlp_target, self.class_map.T)
         # Q = self.sinkhorn_knopp(dist_target.detach())
         # losses['target_cls_loss'] = -torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
+
+        feat_t = features_target / features_target.norm(dim=1, keepdim=True)
+        dist_target = self.class_map(feat_t)
+        Q = self.sinkhorn_knopp(dist_target.detach())
+        losses['target_cls_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
        
         if self.cls_loss is not None:
             if(source_label.size(0) != cls_source.size(0)):
@@ -178,7 +182,7 @@ class DASupClusterHead(BaseHead):
             else:
                 source_cls_label = source_label
             #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
-            losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
+            #losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         return losses
 

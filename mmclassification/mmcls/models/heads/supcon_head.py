@@ -165,8 +165,6 @@ class DASupConClsHead(BaseHead):
         self._init_layers()
         self.init_weights()
 
-        import pdb
-        pdb.set_trace()
         self.register_buffer('class_map', torch.zeros(self.num_classes, mlp_dim))
         self.register_buffer('class_map_verse', torch.zeros(self.num_classes, mlp_dim))
 
@@ -326,7 +324,8 @@ class DASupConClsHead(BaseHead):
                 source_cls_label = source_label.repeat(2)
             else:
                 source_cls_label = source_label
-            #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
+                target_cls_label = target_label
+            losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         #acc = self.compute_accuracy(features_source, source_cls_label)
