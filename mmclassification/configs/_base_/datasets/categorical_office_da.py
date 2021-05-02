@@ -24,10 +24,11 @@ test_pipeline = [
 data = dict(
     workers_per_gpu=30,
     class_per_iter=10,
-    samples_per_class=3,
+    samples_per_class=9,
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
+        times=1,
         data_prefix='data/office31/',
         source_prefix='dslr',
         target_prefix='amazon',
@@ -41,4 +42,4 @@ data = dict(
         type=dataset_type_val,
         data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline))
-evaluation = dict(classwise=False, interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(classwise=31, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))

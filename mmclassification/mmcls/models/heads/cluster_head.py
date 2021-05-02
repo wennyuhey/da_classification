@@ -167,10 +167,6 @@ class DASupClusterHead(BaseHead):
             label_combine = torch.cat((source_label, label_t))
             losses['combined_supcon_loss'] = self.combined_loss(features_mlp, label_combine)
 
-        # dist_target = torch.matmul(mlp_target, self.class_map.T)
-        # Q = self.sinkhorn_knopp(dist_target.detach())
-        # losses['target_cls_loss'] = -torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
-
         feat_t = features_target / features_target.norm(dim=1, keepdim=True)
         dist_target = self.class_map(feat_t)
         Q = self.sinkhorn_knopp(dist_target.detach())

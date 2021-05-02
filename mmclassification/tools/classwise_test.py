@@ -98,8 +98,8 @@ def main():
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
         if args.source_val:
-            outputs_s = da_single_gpu_test(model, data_loader_s)
-        outputs_t = da_single_gpu_test(model, data_loader_t)
+            features_s, mlp_features_s, outputs_s = da_single_gpu_test(model, data_loader_s)
+        features_t, mlp_features_t, outputs_t = da_single_gpu_test(model, data_loader_t)
         """
         for i in range(len(outputs_s)):
             outputs_s[i] = outputs_s[i].cpu()
@@ -150,8 +150,12 @@ def main():
                       'Specify --out to save all results to files.')
     if args.out and rank == 0:
         print(f'\nwriting results to {args.out}')
-        mmcv.dump(outputs_t, args.out)
+        mmcv.dump(outputs_s, 'results_s.pkl')
+        mmcv.dump(outputs_t, 'results_t.pkl')
+        mmcv.dump(dataset_s.get_gt_labels(), 'gt_labels.pkl')
         mmcv.dump(dataset_t.get_gt_labels(), 'gt_labels.pkl')
+        mmcv.dump(features_s, 'features_s.pkl')
+        mmcv.dump(features_t, 'features_t.pkl')
 
 
 if __name__ == '__main__':

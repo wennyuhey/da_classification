@@ -10,6 +10,7 @@ from ..builder import PIPELINES
 
 from PIL import Image
 from . import functional as F
+from PIL import ImageFilter
 
 try:
     import albumentations
@@ -626,6 +627,27 @@ class Albu(object):
     def __repr__(self):
         repr_str = self.__class__.__name__ + f'(transforms={self.transforms})'
         return repr_str
+
+
+@PIPELINES.register_module()
+class RandomGaussianBlur(object):
+
+    def __init__(self, prob=0.5, radius_min=0.1, radius_max=2.):
+        self.prob = prob
+        self.radius_min = radius_min
+        self.radius_max = radius_max
+
+    def __call__(self, results):
+        for key in results.get('img_fields', ['img']):
+            img = results[key]
+            if self.prob < random.random():
+                img = Image.fromarray(img)
+                img = img.filter(
+                    ImageFilter.GaussianBlur(
+                        radius = random.uniform(self.radius_min, self.radius_max)))
+                img = np.array(img)
+            results[key] = img
+        return results
 
 
 @PIPELINES.register_module()
