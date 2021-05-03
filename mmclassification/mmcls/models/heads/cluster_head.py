@@ -98,6 +98,12 @@ class DASupClusterHead(BaseHead):
             if isinstance(m, nn.Linear):
                 normal_init(m, mean=0, std=0.01, bias=0)
 
+    def off_diagonal(self, x):
+        # return a flattened view of the off-diagonal elements of a square matrix
+        n, m = x.shape
+        assert n == m
+        return x.flatten()[:-1].view(n - 1, n + 1)[:, 1:].flatten()
+
     def loss(self,
              features_source,
              features_target,
@@ -120,6 +126,23 @@ class DASupClusterHead(BaseHead):
         feat_t = feat_t / feat_t.norm(dim=1, keepdim=True)
         mlp_s = mlp_s / mlp_s.norm(dim=1, keepdim=True)
         losses = dict()
+        scale_loss=1/32
+        lambd = 3.9e-3
+
+
+        mlp_top = torch.cat((mlp_source[: batchsize,:], mlp_target[: batchsize, :]))
+        mlp_bottom = torch.cat((mlp_source[batchsize:,:], mlp_target[batchsize:, :]))
+        # empirical cross-correlation matrix
+        c = torch.matmul(mlp_top.T, mlp_bottom)
+
+        # sum the cross-correlation matrix between all gpus
+        c.div_(batchsize)
+
+        # use --scale-loss to multiply the loss by a constant factor
+        # see the Issues section of the readme
+        on_diag = torch.diagonal(c).add_(-1).pow_(2).sum().mul(scale_loss)
+        off_diag = self.off_diagonal(c).pow_(2).sum().mul(scale_loss)
+        losses['barlow_loss'] = on_diag + lambd * off_diag
 
         #source_dist = torch.matmul(feat_s, self.class_map.T)
         #self.class_map.weight = nn.Parameter(self.class_map.weight / self.class_map.weight.norm(dim=1, keepdim=True))
