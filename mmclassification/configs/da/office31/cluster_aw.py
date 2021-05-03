@@ -12,10 +12,10 @@ model=dict(
         momentum=0.9,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
-        #con_target_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=0.3),
+        #con_target_loss=dict(type='SupConLoss', temperature=0.07, loss_weight=0.1),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
         frozen_map=True,
-        mlp_cls=False,
+        mlp_cls=True,
         topk=(1)))
 
 data = dict(
