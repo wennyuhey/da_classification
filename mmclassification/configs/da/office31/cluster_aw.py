@@ -22,8 +22,8 @@ data = dict(
     train=dict(
         load_mode=dict(target_balance=False,
                        target_shuffle=True,
-                       source_balance=False,
-                       source_shuffle=True)))
+                       source_balance=True,
+                       source_shuffle=False)))
 
 
 load_from = '/lustre/S/wangyu/PretrainedModels/resnet50-19c8e357_new.pth'

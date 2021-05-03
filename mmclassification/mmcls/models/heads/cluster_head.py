@@ -125,7 +125,7 @@ class DASupClusterHead(BaseHead):
         #self.class_map.weight = nn.Parameter(self.class_map.weight / self.class_map.weight.norm(dim=1, keepdim=True))
         #self.mlp_class_map.weight = nn.Parameter(self.mlp_class_map.weight / self.mlp_class_map.weight.norm(dim=1, keepdim=True))
         source_dist = self.class_map(features_source)
-        losses['map_kl_loss'] = self.cls_loss(source_dist, source_label)
+        losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(2))
         #mlp_source_dist = torch.matmul(mlp_s, self.mlp_class_map.T)
         #mlp_source_dist = self.mlp_class_map(mlp_source)
         #losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label)
@@ -169,7 +169,19 @@ class DASupClusterHead(BaseHead):
 
         feat_t = features_target / features_target.norm(dim=1, keepdim=True)
         dist_target = self.class_map(feat_t)
+        dist_target_top = dist_target[0:batchsize]
+        dist_target_bottom = dist_target[batchsize:]
+        co_dist = torch.matmul(dist_target_top, dist_target_bottom.T)
+        max_dist, _ = torch.max(co_dist, dim=1, keepdim = True)
+        co_dist = co_dist - max_dist
+        mask = torch.eye(batchsize, dtype=bool).to(torch.device('cuda'))
+        exp_up = torch.exp(co_dist) * mask
+        exp_down = torch.exp(co_dist) * ~mask
+        weight_mask = 100 * exp_up.sum(1, keepdim=True) / exp_down.sum(1, keepdim=True)        
+
         Q = self.sinkhorn_knopp(dist_target.detach())
+ 
+        #Q = Q * weight_mask.repeat(2,1)
         losses['target_cls_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
        
         if self.cls_loss is not None:
@@ -287,3 +299,4 @@ class DASupClusterHead(BaseHead):
         Q *= B
 
         return Q.t()
+

@@ -24,15 +24,15 @@ test_pipeline = [
 ]
 data = dict(
     workers_per_gpu=30,
-    class_per_iter=10,
-    samples_per_class=9,
+    class_per_iter=31,
+    samples_per_class=3,
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
         data_prefix='data/office31/',
         source_prefix='amazon',
         target_prefix='webcam',
-        times=1,
+        times=2,
         load_mode=dict(target_balance=False,
                        target_shuffle=True,
                        source_balance=False,

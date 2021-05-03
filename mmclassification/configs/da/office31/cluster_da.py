@@ -20,8 +20,8 @@ model=dict(
 
 data = dict(
     train=dict(
-        load_mode=dict(target_balance=True,
-                       target_shuffle=False,
+        load_mode=dict(target_balance=False,
+                       target_shuffle=True,
                        source_balance=True,
                        source_shuffle=False)))
 
