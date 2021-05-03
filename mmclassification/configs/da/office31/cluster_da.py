@@ -15,7 +15,7 @@ model=dict(
         #con_target_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=0.3),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
         frozen_map=True,
-        mlp_cls=False,
+        mlp_cls=True,
         topk=(1)))
 
 data = dict(

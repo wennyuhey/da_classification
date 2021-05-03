@@ -32,6 +32,7 @@ class CatEpochBasedRunner(DABaseRunner):
             data_t = {}
             data_t['img_t'] = data_target.pop('img')
             data_t['gt_label_t'] = data_target.pop('gt_label')
+            data_t['pseudo_label'] = data_target.pop('pseudo_label')
         else:
             data_t = None
 

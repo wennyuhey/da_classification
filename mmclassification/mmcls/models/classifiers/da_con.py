@@ -75,7 +75,7 @@ class DASupConClsClassifier(DABaseClassifier):
                 feat_t = self.extract_feat(img_t, torch.tensor([1]))
 
         losses = dict()
-        loss = self.head.forward_train(feat_s, feat_t, gt_label_s, gt_label_t)
+        loss = self.head.forward_train(feat_s, feat_t, gt_label_s, gt_label_t, **kwargs)
         losses.update(loss)
 
         return losses

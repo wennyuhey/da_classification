@@ -11,7 +11,7 @@ train_pipeline = [
     dict(type='Normalize', **img_norm_cfg),
     dict(type='ImageToTensor', keys=['img']),
     dict(type='ToTensor', keys=['gt_label']),
-    dict(type='Collect', keys=['img', 'gt_label'])
+    dict(type='Collect', keys=['img', 'gt_label', 'pseudo_label'])
 ]
 test_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -43,3 +43,4 @@ data = dict(
         data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline))
 evaluation = dict(classwise=31, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+initialize = dict(by_epoch=True, interval=1)

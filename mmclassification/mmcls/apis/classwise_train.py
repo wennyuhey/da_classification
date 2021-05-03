@@ -7,7 +7,7 @@ from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmcv.runner import DADistSamplerSeedHook, build_optimizer, build_runner
 
 from mmcls.core import (DADistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
-                        Fp16OptimizerHook, DatasetHook)
+                        Fp16OptimizerHook, DatasetHook, InitializeHook)
 from mmcls.datasets import build_dataloader, build_dataset, build_classwise_dataloader
 from mmcls.utils import get_root_logger, convert_splitnorm_model
 
@@ -133,6 +133,9 @@ def classwise_train_model(model,
     #eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
     eval_hook = DADistEvalHook if distributed else DAEvalHook
     runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
+    #initialmap_cfg = cfg.get('initialize', {})
+    #initialize_hook = InitializeHook
+    #runner.register_hook(initialize_hook(val_dataloader, **initialmap_cfg))
 
     #cluster_cfg = cfg.get('cluster', {})
     #runner.register_hook(DatasetHook(val_dataloader_t, **cluster_cfg))

@@ -195,9 +195,10 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
             self.class_set = class_set
 
         if target_label is not None:
-            pass
+            for idx, label in enumerate(target_label):
+                self.target_data[idx]['pseudo_label'] = np.array(label.item(), dtype=np.int64)
 
-        self.category_preprocess()
+        #self.category_preprocess()
 
     def evaluate(self,
                  results,

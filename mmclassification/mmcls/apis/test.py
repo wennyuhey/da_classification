@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import time
 
+import numpy as np
 import mmcv
 import torch
 import torch.distributed as dist
@@ -174,7 +175,7 @@ def da_single_gpu_test(model, data_loader, domain='target',  test_mode='distance
         if bar_show:
             for _ in range(batch_size):
                 prog_bar.update()
-    return features, mlp_features, results
+    return torch.from_numpy(np.vstack(features)), torch.from_numpy(np.vstack(mlp_features)), torch.from_numpy(np.vstack(results))
 
 
 def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):

@@ -93,6 +93,8 @@ def main():
         wrap_fp16_model(model)
     if cfg.aux:
        model.backbone = convert_splitnorm_model(model.backbone) 
+    import pdb
+    pdb.set_trace()
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
 
     if not distributed:

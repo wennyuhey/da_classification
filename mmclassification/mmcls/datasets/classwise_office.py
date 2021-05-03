@@ -35,6 +35,7 @@ class ClasswiseOfficeAW(ClasswiseDADataset):
                 info = {'img_prefix': domain_prefix}
                 info['img_info'] = {'filename': osp.join(label, img)}
                 info['gt_label'] = np.array(idx, dtype=np.int64)
+                info['pseudo_label'] = np.array(-1, dtype=np.int64)
                 data_infos.append(info)
                 class_list[idx] += 1
         return data_infos, class_list

@@ -107,6 +107,7 @@ class DASupClusterHead(BaseHead):
              cls_target,
              source_label,
              target_label,
+             target_pseudo,
              reverse_source=None,
              reverse_target=None):
 
@@ -202,7 +203,7 @@ class DASupClusterHead(BaseHead):
         
         
         #Q = Q * weight_mask.repeat(2,1)
-        losses['target_cls_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
+        losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
 
         mlp_dist_target = self.mlp_class_map(mlp_target)
         mlp_dist_top = mlp_dist_target[:batchsize]
@@ -215,19 +216,21 @@ class DASupClusterHead(BaseHead):
         mlp_dist_max = mlp_dist_top * mlp_mask + mlp_dist_bottom * ~mlp_mask
         mlp_Q = self.sinkhorn_knopp(mlp_dist_max.detach())
         mlp_Q = mlp_Q.repeat(2,1)
-        losses['mlp_target_cls_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target, dim=1), dim=1))
+        losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target, dim=1), dim=1))
        
         if self.cls_loss is not None:
             if(source_label.size(0) != cls_source.size(0)):
                 source_cls_label = source_label.repeat(2)
+                target_cls_label = target_pseudo.repeat(2)
             else:
                 source_cls_label = source_label
+                target_cls_label = target_pseudo
             #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         return losses
 
-    def forward_train(self, features_source, features_target, source_label=None, target_label=None):
+    def forward_train(self, features_source, features_target, source_label=None, target_label=None, pseudo_label=None):
         
         mlp_source = self.contrastive_projector(features_source)
         mlp_source = mlp_source / mlp_source.norm(dim=1, keepdim=True)
@@ -264,6 +267,7 @@ class DASupClusterHead(BaseHead):
                            cls_target,
                            source_label,
                            target_label,
+                           pseudo_label,
                            reverse_source,
                            reverse_target)
 
@@ -279,7 +283,7 @@ class DASupClusterHead(BaseHead):
             cls_dist = self.class_map(img)
         pred = F.softmax(cls_dist, dim=1)
         pred = list(pred.detach().cpu().numpy())
-        return img, img_mlp, pred
+        return list(img.detach().cpu().numpy()), list(img_mlp.detach().cpu().numpy()), pred
 
     def fc_test(self, img):
         img_mlp = self.contrastive_projector(img)
@@ -293,7 +297,7 @@ class DASupClusterHead(BaseHead):
         if torch.onnx.is_in_onnx_export():
             return pred
         pred = list(pred.detach().cpu().numpy())
-        return img, img_mlp, pred
+        return list(img.detach().cpu().numpy()), list(img_mlp.detach().cpu().numpy()), pred
 
     def accumulate_map(self, feat_s, feat_t, label_s, label_t):
         bs_size_s = int(feat_s.shape[0]/2)
