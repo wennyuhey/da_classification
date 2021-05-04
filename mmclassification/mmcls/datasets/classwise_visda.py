@@ -33,6 +33,4 @@ class ClasswiseVisDA(ClasswiseDADataset):
             info['pseudo_label'] = np.array(-1, dtype=np.int64)
             class_list[int(label)] += 1
             data_infos.append(info)
-        import pdb
-        pdb.set_trace()
         return data_infos, class_list

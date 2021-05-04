@@ -22,6 +22,7 @@ class DASupClusterHead(BaseHead):
                  combined_loss=None,
                  con_target_loss=None,
                  cls_loss=None,
+                 barlow_loss=True,
                  select_feat=None,
                  topk=(1, ),
                  frozen_map=True,
@@ -36,6 +37,7 @@ class DASupClusterHead(BaseHead):
         self.combined_loss = None
         self.threshold = threshold
         self.soft_cls = None
+        self.barlow_loss = barlow_loss
         self.mlp_flag = mlp_cls
         self.epsilon = 0.05
 
@@ -127,23 +129,24 @@ class DASupClusterHead(BaseHead):
         feat_t = feat_t / feat_t.norm(dim=1, keepdim=True)
         mlp_s = mlp_s / mlp_s.norm(dim=1, keepdim=True)
         losses = dict()
-        scale_loss=1/32
-        lambd = 3.9e-3
 
 
-        mlp_top = torch.cat((mlp_source[: batchsize,:], mlp_target[: batchsize, :]))
-        mlp_bottom = torch.cat((mlp_source[batchsize:,:], mlp_target[batchsize:, :]))
-        # empirical cross-correlation matrix
-        c = torch.matmul(mlp_top.T, mlp_bottom)
+        if self.barlow_loss:
+            scale_loss=0.5
+            lambd = 0.01
+            mlp_top = torch.cat((mlp_source[: batchsize,:], mlp_target[: batchsize, :]))
+            mlp_bottom = torch.cat((mlp_source[batchsize:,:], mlp_target[batchsize:, :]))
+            # empirical cross-correlation matrix
+            c = torch.matmul(mlp_top.T, mlp_bottom)
 
-        # sum the cross-correlation matrix between all gpus
-        c.div_(batchsize)
+            # sum the cross-correlation matrix between all gpus
+            c.div_(batchsize)
 
-        # use --scale-loss to multiply the loss by a constant factor
-        # see the Issues section of the readme
-        on_diag = torch.diagonal(c).add_(-1).pow_(2).sum().mul(scale_loss)
-        off_diag = self.off_diagonal(c).pow_(2).sum().mul(scale_loss)
-        losses['barlow_loss'] = on_diag + lambd * off_diag
+            # use --scale-loss to multiply the loss by a constant factor
+            # see the Issues section of the readme
+            on_diag = torch.diagonal(c).add_(-1).pow_(2).sum().mul(scale_loss)
+            off_diag = self.off_diagonal(c).pow_(2).sum().mul(scale_loss)
+            losses['barlow_loss'] = on_diag + lambd * off_diag
 
         #source_dist = torch.matmul(feat_s, self.class_map.T)
         #self.class_map.weight = nn.Parameter(self.class_map.weight / self.class_map.weight.norm(dim=1, keepdim=True))

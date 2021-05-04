@@ -1,6 +1,6 @@
 _base_ = [
     '../../_base_/models/da_resnet101.py', '../../_base_/schedules/cat_visda.py',
-    '../../_base_/default_runtime.py', '../../_base_/datasets/categorical_visda.py'
+    '../../_base_/visda_default_runtime.py', '../../_base_/datasets/categorical_visda.py'
 ]
 model=dict(
     head=dict(
