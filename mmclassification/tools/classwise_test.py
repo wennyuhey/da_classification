@@ -93,9 +93,9 @@ def main():
         wrap_fp16_model(model)
     if cfg.aux:
        model.backbone = convert_splitnorm_model(model.backbone) 
-    import pdb
-    pdb.set_trace()
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
+    #if cfg.aux:
+    #   model.backbone = convert_splitnorm_model(model.backbone)
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
@@ -154,11 +154,14 @@ def main():
         print(f'\nwriting results to {args.out}')
         mmcv.dump(outputs_s, 'results_s.pkl')
         mmcv.dump(outputs_t, 'results_t.pkl')
-        mmcv.dump(dataset_s.get_gt_labels(), 'gt_labels.pkl')
-        mmcv.dump(dataset_t.get_gt_labels(), 'gt_labels.pkl')
+        mmcv.dump(dataset_s.get_gt_labels(), 'gt_labels_s.pkl')
+        mmcv.dump(dataset_t.get_gt_labels(), 'gt_labels_t.pkl')
         mmcv.dump(features_s, 'features_s.pkl')
         mmcv.dump(features_t, 'features_t.pkl')
+        mmcv.dump(features_s, 'mlp_features_s.pkl')
+        mmcv.dump(features_t, 'mlp_features_t.pkl')
 
+ 
 
 if __name__ == '__main__':
     main()

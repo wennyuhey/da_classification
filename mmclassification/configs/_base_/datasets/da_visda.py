@@ -26,7 +26,7 @@ data_s = dict(
     samples_validate_per_gpu=500,
     train=dict(
         type='SupConDataset',
-        times=2,
+        times=1,
         dataset=dict(
             type=dataset_type,
             data_prefix='data/visda/train',
@@ -46,7 +46,7 @@ data_t = dict(
     samples_validate_per_gpu=500,
     train=dict(
         type='SupConDataset',
-        times=2,
+        times=1,
         dataset=dict(
             type=dataset_type,
             data_prefix='data/visda/validation',
@@ -60,4 +60,4 @@ data_t = dict(
         type=dataset_type,
         data_prefix='data/visda/validation',
         pipeline=test_pipeline))
-evaluation = dict(classwise=12,interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(classwise=12, test_mode='fc', interval=1, metric='accuracy', metric_options=dict(topk=(1)))

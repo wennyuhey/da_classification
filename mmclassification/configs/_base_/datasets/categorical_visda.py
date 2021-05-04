@@ -11,7 +11,7 @@ train_pipeline = [
     dict(type='Normalize', **img_norm_cfg),
     dict(type='ImageToTensor', keys=['img']),
     dict(type='ToTensor', keys=['gt_label']),
-    dict(type='Collect', keys=['img', 'gt_label'])
+    dict(type='Collect', keys=['img', 'gt_label', 'pseudo_label'])
 ]
 test_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -23,8 +23,8 @@ test_pipeline = [
 ]
 data = dict(
     workers_per_gpu=20,
-    class_per_iter=10,
-    samples_per_class=9,
+    class_per_iter=12,
+    samples_per_class=8,
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
@@ -32,8 +32,8 @@ data = dict(
         source_prefix='train',
         target_prefix='validation',
         times=2,
-        load_mode=dict(target_balance=True,
-                       target_shuffle=False,
+        load_mode=dict(target_balance=False,
+                       target_shuffle=True,
                        source_balance=True,
                        source_shuffle=False),
         pipeline=train_pipeline),
@@ -47,3 +47,4 @@ data = dict(
         data_prefix='data/visda/validation',
         pipeline=test_pipeline))
 evaluation = dict(by_epoch=True, classwise=12, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+initialize = dict(by_epoch=True, interval=1)

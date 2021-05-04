@@ -325,7 +325,7 @@ class DASupConClsHead(BaseHead):
             else:
                 source_cls_label = source_label
                 target_cls_label = target_label
-            losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
+            #losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         #acc = self.compute_accuracy(features_source, source_cls_label)
