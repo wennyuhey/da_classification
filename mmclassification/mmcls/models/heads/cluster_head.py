@@ -355,7 +355,7 @@ class DASupClusterHead(BaseHead):
             sum_of_rows = torch.sum(Q, dim=1, keepdim=True)
             Q /= sum_of_rows
             Q /= K
-            sum_of_cols = torch.sum(Q, dim=1, keepdim=True)
+            sum_of_cols = torch.sum(Q, dim=0, keepdim=True)
             Q /= sum_of_cols
             Q /= B
     
