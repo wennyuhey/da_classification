@@ -152,10 +152,10 @@ class DASupClusterHead(BaseHead):
         #self.class_map.weight = nn.Parameter(self.class_map.weight / self.class_map.weight.norm(dim=1, keepdim=True))
         #self.mlp_class_map.weight = nn.Parameter(self.mlp_class_map.weight / self.mlp_class_map.weight.norm(dim=1, keepdim=True))
         source_dist = self.class_map(features_source)
-        losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(2))
+        losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(self.times_source))
         #mlp_source_dist = torch.matmul(mlp_s, self.mlp_class_map.T)
         mlp_source_dist = self.mlp_class_map(mlp_source)
-        losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(2))
+        losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(self.times_source))
 
         if self.con_target_loss is not None:
             features_mlp_target = torch.cat((mlp_target[0: batchsize].unsqueeze(1),
@@ -196,6 +196,10 @@ class DASupClusterHead(BaseHead):
 
         feat_t = features_target / features_target.norm(dim=1, keepdim=True)
         dist_target = self.class_map(feat_t)
+        import pdb
+        pdb.set_trace()
+        dist_target = dist_target.reshape(self.times_target, batchsize, -1)
+
         dist_target_top = dist_target[0:batchsize]
         dist_target_bottom = dist_target[batchsize:]
         """
@@ -257,6 +261,8 @@ class DASupClusterHead(BaseHead):
         return losses
 
     def forward_train(self, features_source, features_target, source_label=None, target_label=None, pseudo_label=None):
+       self.times_source = int(len(features_source) / len(source_label))
+       self.times_target = int(len(features_target) / len(target_label))
         
         mlp_source = self.contrastive_projector(features_source)
         mlp_source = mlp_source / mlp_source.norm(dim=1, keepdim=True)
