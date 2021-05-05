@@ -22,7 +22,7 @@ class DASupClusterHead(BaseHead):
                  combined_loss=None,
                  con_target_loss=None,
                  cls_loss=None,
-                 barlow_loss=True,
+                 barlow_loss=False,
                  select_feat=None,
                  topk=(1, ),
                  frozen_map=True,
