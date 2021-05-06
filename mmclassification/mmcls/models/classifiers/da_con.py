@@ -66,12 +66,14 @@ class DASupConClsClassifier(DABaseClassifier):
         if isinstance(img_s, list):
             feat_s = [self.extract_feat(img_s[i], torch.tensor([0])) for i in range(len(img_s))]
             feat_s = torch.cat(tuple(feat_s))
-            if img_t is not None:
-                feat_t = [self.extract_feat(img_t[i], torch.tensor([1])) for i in range(len(img_t))]
-                feat_t = torch.cat(tuple(feat_t))
         else:
             feat_s = self.extract_feat(img_s, torch.tensor([0]))
-            if img_t is not None:
+
+        if img_t is not None:
+            if isinstance(img_t, list):
+                feat_t = [self.extract_feat(img_t[i], torch.tensor([1])) for i in range(len(img_t))]
+                feat_t = torch.cat(tuple(feat_t))
+            else:
                 feat_t = self.extract_feat(img_t, torch.tensor([1]))
 
         losses = dict()

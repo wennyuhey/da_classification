@@ -24,7 +24,7 @@ class CatEpochBasedRunner(DABaseRunner):
     def run_iter(self, data, train_mode, **kwargs):
         data_source = data.pop('source')
         data_s = {}
-        data_s['img_s'] = data_source.pop('img')
+        data_s['img_s'] = data_source.pop('img')[0]
         data_s['gt_label_s'] = data_source.pop('gt_label')
 
         if not self.source_only:

@@ -196,30 +196,18 @@ class DASupClusterHead(BaseHead):
 
         feat_t = features_target / features_target.norm(dim=1, keepdim=True)
         dist_target = self.class_map(feat_t)
-        import pdb
-        pdb.set_trace()
         dist_target = dist_target.reshape(self.times_target, batchsize, -1)
+        C = torch.zeros_like(dist_target[0]).to(torch.device('cuda'))
+        dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
+        for i in range(self.times_target):
+            d = dist_target[i]
+            d_max, _ = torch.max(d, dim=1, keepdim=True)
+            mask = dist_max > d_max
+            C = C * mask + d * ~mask
+            dist_max = dist_max * mask + d_max * ~mask
 
-        dist_target_top = dist_target[0:batchsize]
-        dist_target_bottom = dist_target[batchsize:]
-        """
-        co_dist = torch.matmul(dist_target_top, dist_target_bottom.T)
-        max_dist, _ = torch.max(co_dist, dim=1, keepdim = True)
-        co_dist = co_dist - max_dist
-        mask = torch.eye(batchsize, dtype=bool).to(torch.device('cuda'))
-        exp_up = torch.exp(co_dist) * mask
-        exp_down = torch.exp(co_dist) * ~mask
-        weight_mask = 100 * exp_up.sum(1, keepdim=True) / exp_down.sum(1, keepdim=True)        
-        """
-
-        dist_max_top, pred_top = torch.max(dist_target_top, dim=1, keepdim=True)
-        dist_max_bottom, pred_bottom = torch.max(dist_target_bottom, dim=1, keepdim=True)
-
-        mask = dist_max_top > dist_max_bottom
-        dist_max = dist_target_top * mask + dist_target_bottom * ~mask
-
-        Q = self.sinkhorn_knopp(dist_max.detach())
-        Q = Q.repeat(2, 1)
+        Q = self.sinkhorn_knopp(C.detach())
+        Q = Q.repeat(self.times_target, 1)
         
 
         """
@@ -233,20 +221,22 @@ class DASupClusterHead(BaseHead):
         
         
         #Q = Q * weight_mask.repeat(2,1)
-        losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target, dim=1), dim=1))
+        losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
 
         mlp_dist_target = self.mlp_class_map(mlp_target)
-        mlp_dist_top = mlp_dist_target[:batchsize]
-        mlp_dist_bottom = mlp_dist_target[batchsize:]
+        mlp_dist_target = mlp_dist_target.reshape(self.times_target, batchsize, -1)
+        C = torch.zeros_like(mlp_dist_target[0]).to(torch.device('cuda'))
+        mlp_dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
+        for i in range(self.times_target):
+            d = mlp_dist_target[i]
+            d_max, _ = torch.max(d, dim=1, keepdim=True)
+            mask = mlp_dist_max > d_max
+            C = C * mask + d * ~mask
+            mlp_dist_max = mlp_dist_max * mask + d_max * ~mask
 
-        mlp_dist_max_top, _ = torch.max(mlp_dist_top, dim=1, keepdim=True)
-        mlp_dist_max_bottom, _ = torch.max(mlp_dist_bottom, dim=1, keepdim=True)
-        mlp_mask = mlp_dist_max_top > mlp_dist_max_bottom
-
-        mlp_dist_max = mlp_dist_top * mlp_mask + mlp_dist_bottom * ~mlp_mask
-        mlp_Q = self.sinkhorn_knopp(mlp_dist_max.detach())
-        mlp_Q = mlp_Q.repeat(2,1)
-        losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target, dim=1), dim=1))
+        mlp_Q = self.sinkhorn_knopp(C.detach())
+        mlp_Q = mlp_Q.repeat(self.times_target, 1)
+        losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
        
         if self.cls_loss is not None:
             if(source_label.size(0) != cls_source.size(0)):
@@ -261,8 +251,8 @@ class DASupClusterHead(BaseHead):
         return losses
 
     def forward_train(self, features_source, features_target, source_label=None, target_label=None, pseudo_label=None):
-       self.times_source = int(len(features_source) / len(source_label))
-       self.times_target = int(len(features_target) / len(target_label))
+        self.times_source = int(len(features_source) / len(source_label))
+        self.times_target = int(len(features_target) / len(target_label))
         
         mlp_source = self.contrastive_projector(features_source)
         mlp_source = mlp_source / mlp_source.norm(dim=1, keepdim=True)

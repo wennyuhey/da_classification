@@ -31,7 +31,7 @@ data = dict(
         data_prefix='data/visda/',
         source_prefix='train',
         target_prefix='validation',
-        times=2,
+        times=3,
         load_mode=dict(target_balance=False,
                        target_shuffle=True,
                        source_balance=True,
