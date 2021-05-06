@@ -115,7 +115,9 @@ def build_classwise_dataloader(dataset,
 
     if dist:
         sampler = DistributedClasswiseSampler(
-            dataset, world_size, rank, shuffle=shuffle, round_up=round_up)
+            dataset=dataset, num_replicas=world_size,
+            rank=rank, shuffle=shuffle, class_num=class_per_iter,
+            batch_size=batch_size, seed=seed)
     else:
         sampler = ClasswiseSampler(dataset=dataset,
                          class_num=class_per_iter,
@@ -127,13 +129,23 @@ def build_classwise_dataloader(dataset,
         worker_init_fn, num_workers=num_workers, rank=rank,
         seed=seed) if seed is not None else None
 
-    dataloader = DataLoader(
-        dataset,
-        batch_sampler=sampler,
-        num_workers=num_workers,
-        worker_init_fn=init_fn,
-        pin_memory=True, 
-        shuffle=False)
+    if dist:
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size * class_per_iter,
+            sampler=samper,
+            num_workers=num_workers,
+            pin_memory=True,
+            shuffle=shuffle,
+            worker_init_fn=init_fn)
+    else:
+        dataloader = DataLoader(
+            dataset,
+            batch_sampler=sampler,
+            num_workers=num_workers,
+            worker_init_fn=init_fn,
+            pin_memory=True, 
+            shuffle=False)
     return dataloader
 
 

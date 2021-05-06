@@ -13,7 +13,7 @@ import scipy.io as sio
 
 
 @DATASETS.register_module()
-class ClasswiseOfficeAW(ClasswiseDADataset):
+class ClasswiseOffice(ClasswiseDADataset):
 
     CLASSES = [
         'back_pack', 'bike', 'bike_helmet', 'bookcase', 'bottle', 'calculator', 'desk_chair',

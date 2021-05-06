@@ -1,5 +1,5 @@
 from .base_dataset import BaseDataset
-from .builder import DATASETS, PIPELINES, build_dataloader, build_dataset, build_categorical_dataloader, build_classwise_dataloader 
+from .builder import DATASETS, PIPELINES, build_dataloader, build_dataset, build_classwise_dataloader 
 from .cifar import CIFAR10, CIFAR100
 from .dataset_wrappers import (ConcatDataset, RepeatDataset, SupConDataset)
 from .imagenet import ImageNet
