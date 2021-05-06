@@ -121,48 +121,27 @@ class DASupClusterHead(BaseHead):
 
 
         batchsize = len(source_label)
-
-        feat_s = features_source.clone()
-        feat_t = features_target.clone()
-        mlp_s = mlp_source.detach()
-        feat_s = feat_s / feat_s.norm(dim=1, keepdim=True)
-        feat_t = feat_t / feat_t.norm(dim=1, keepdim=True)
-        mlp_s = mlp_s / mlp_s.norm(dim=1, keepdim=True)
         losses = dict()
-
-
         if self.barlow_loss:
             scale_loss=0.5
             lambd = 0.01
             mlp_top = torch.cat((mlp_source[: batchsize,:], mlp_target[: batchsize, :]))
             mlp_bottom = torch.cat((mlp_source[batchsize:,:], mlp_target[batchsize:, :]))
-            # empirical cross-correlation matrix
             c = torch.matmul(mlp_top.T, mlp_bottom)
-
-            # sum the cross-correlation matrix between all gpus
             c.div_(batchsize)
-
-            # use --scale-loss to multiply the loss by a constant factor
-            # see the Issues section of the readme
             on_diag = torch.diagonal(c).add_(-1).pow_(2).sum().mul(scale_loss)
             off_diag = self.off_diagonal(c).pow_(2).sum().mul(scale_loss)
             losses['barlow_loss'] = on_diag + lambd * off_diag
 
-        #source_dist = torch.matmul(feat_s, self.class_map.T)
-        #self.class_map.weight = nn.Parameter(self.class_map.weight / self.class_map.weight.norm(dim=1, keepdim=True))
-        #self.mlp_class_map.weight = nn.Parameter(self.mlp_class_map.weight / self.mlp_class_map.weight.norm(dim=1, keepdim=True))
         source_dist = self.class_map(features_source)
         losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(self.times_source))
-        #mlp_source_dist = torch.matmul(mlp_s, self.mlp_class_map.T)
         mlp_source_dist = self.mlp_class_map(mlp_source)
         losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(self.times_source))
 
         if self.con_target_loss is not None:
             features_mlp_target = torch.cat((mlp_target[0: batchsize].unsqueeze(1),
                                             mlp_target[batchsize: batchsize*2].unsqueeze(1)), dim=1)
-            #target_label = torch.arange(target_label.shape[0]).to(torch.device('cuda'))
             losses['supcon_target_loss'] = self.con_target_loss(features_mlp_target)
-            #losses['supcon_target_refer'] = self.supcon_loss(features_mlp_target.detach(), target)
 
         if self.sup_source_loss is not None:
             features_mlp_source = torch.cat((mlp_source[0: batchsize,:].unsqueeze(1),
@@ -209,18 +188,6 @@ class DASupClusterHead(BaseHead):
         Q = self.sinkhorn_knopp(C.detach())
         Q = Q.repeat(self.times_target, 1)
         
-
-        """
-        feat_t = features_target / features_target.norm(dim=1, keepdim=True)
-        p_t = F.softmax(self.class_map(feat_t), dim=1)
-        class_sum = torch.sqrt(p_t.sum(dim=0, keepdim=True))
-        p_div = p_t / class_sum
-        sample_sum = p_div.sum(dim=1, keepdim=True)
-        Q = p_div / sample_sum
-        """ 
-        
-        
-        #Q = Q * weight_mask.repeat(2,1)
         losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
 
         mlp_dist_target = self.mlp_class_map(mlp_target)
@@ -298,7 +265,6 @@ class DASupClusterHead(BaseHead):
     def distance_test(self, img):
         """Test without augmentation."""
         img_mlp = self.contrastive_projector(img)
-        #cls_dist = torch.matmul(img, self.class_map.T)
         if self.mlp_flag:
             cls_dist = self.mlp_class_map(img_mlp)
         else:
@@ -334,11 +300,7 @@ class DASupClusterHead(BaseHead):
         update_feature = torch.sum(feature * mask, dim=1) / (num_mask + 10e-6)
         self.class_map = map_mask * update_feature + \
                          ~map_mask * (logic_mask * self.class_map + ~logic_mask*(self.class_map * self.momentum + update_feature * (1 - self.momentum)))
-#        self.class_map = self.class_map/self.class_map.norm(dim=1, keepdim=True)
       
-#        self.class_map = self.class_map.detach()
-#        self.class_map_verse = self.class_map_verse * self.momentum + torch.sum(feature * mask, dim=1) * (1 - self.momentum)
-
     def sinkhorn_knopp(self, dist):
         Q = torch.exp(dist/self.epsilon).t()
         B = Q.shape[1]
