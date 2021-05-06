@@ -24,14 +24,14 @@ test_pipeline = [
 data = dict(
     workers_per_gpu=20,
     class_per_iter=12,
-    samples_per_class=8,
+    samples_per_class=9,
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
         data_prefix='data/visda/',
         source_prefix='train',
         target_prefix='validation',
-        times=3,
+        times=2,
         load_mode=dict(target_balance=False,
                        target_shuffle=True,
                        source_balance=True,
