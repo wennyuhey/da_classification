@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import torch
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
-from mmcv.runner import DADistSamplerSeedHook, build_optimizer, build_runner
+from mmcv.runner import ClassDistSamplerSeedHook, build_optimizer, build_runner
 
 from mmcls.core import (DADistEvalHook, DistOptimizerHook, DAEvalHook, OfficeEvalHook,
                         Fp16OptimizerHook, DatasetHook, InitializeHook)
@@ -108,7 +108,7 @@ def classwise_train_model(model,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
     if distributed:
-        runner.register_hook(DADistSamplerSeedHook())
+        runner.register_hook(ClassDistSamplerSeedHook())
 
     # register eval hooks
     #if validate:

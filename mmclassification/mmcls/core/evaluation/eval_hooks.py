@@ -164,9 +164,9 @@ class DAEvalHook(Hook):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import da_single_gpu_test
-        _, _, results_s = da_single_gpu_test(runner.model, self.dataloader[0], test_mode=self.test_mode, show=False)
+        _, _, results_s = da_single_gpu_test(runner.model, self.dataloader[0], domain='source', test_mode=self.test_mode, show=False)
         #results_s = None
-        _, _, results_t = da_single_gpu_test(runner.model, self.dataloader[1], test_mode=self.test_mode, show=False)
+        _, _, results_t = da_single_gpu_test(runner.model, self.dataloader[1], domain='target', test_mode=self.test_mode, show=False)
         self.evaluate(runner, results_s, results_t)
 
     def after_train_iter(self, runner):
@@ -198,6 +198,8 @@ class DADistEvalHook(DAEvalHook):
     def __init__(self,
                  dataloader,
                  interval=1,
+                 classwise=False,
+                 test_mode='distance',
                  gpu_collect=False,
                  by_epoch=True,
                  **eval_kwargs):
@@ -206,26 +208,32 @@ class DADistEvalHook(DAEvalHook):
         self.gpu_collect = gpu_collect
         self.by_epoch = by_epoch
         self.eval_kwargs = eval_kwargs
+        self.classwise = classwise
+        self.test_mode = test_mode
 
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import da_multi_gpu_test
-        results_s = da_multi_gpu_test(
+        _, _, results_s = da_multi_gpu_test(
             runner.model,
             self.dataloader[0],
+            domain='source',
+            test_mode=self.test_mode,
             tmpdir=osp.join(runner.work_dir, '.eval_hook'),
             gpu_collect=self.gpu_collect)
-        results_t = da_multi_gpu_test(
+        _, _, results_t = da_multi_gpu_test(
             runner.model,
             self.dataloader[1],
+            domain='target',
+            test_mode=self.test_mode,
             tmpdir=osp.join(runner.work_dir, '.eval_hook'),
             gpu_collect=self.gpu_collect)
 
         if runner.rank == 0:
             print('\n')
             self.evaluate(runner, results_s, results_t)
-
+    
     def after_train_iter(self, runner):
         if self.by_epoch or not self.every_n_iters(runner, self.interval):
             return

@@ -9,6 +9,7 @@ import torch.nn as nn
 from mmcv.cnn import normal_init
 from mmcv.cnn.bricks import build_linear_layer
 from mmcls.utils import GradReverse
+import torch.distributed as distributed
 
 @HEADS.register_module()
 class DASupClusterHead(BaseHead):
@@ -344,11 +345,13 @@ class DASupClusterHead(BaseHead):
         B = Q.shape[1]
         K = Q.shape[0]
         Q_sum = torch.sum(Q)
+        distributed.all_reduce(Q_sum)
         Q /= Q_sum
 
         #for i in range(self.sinkhorn_iterations):
         for i in range(3):
             sum_of_rows = torch.sum(Q, dim=1, keepdim=True)
+            distributed.all_reduce(sum_of_rows)
             Q /= sum_of_rows
             Q /= K
             sum_of_cols = torch.sum(Q, dim=0, keepdim=True)

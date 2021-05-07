@@ -22,9 +22,9 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data = dict(
-    workers_per_gpu=20,
+    workers_per_gpu=2,
     class_per_iter=12,
-    samples_per_class=9,
+    samples_per_class=8,
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,

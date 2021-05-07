@@ -14,7 +14,8 @@ from .hooks import (HOOKS, CheckpointHook, ClosureHook, DistSamplerSeedHook,
                     EMAHook, Fp16OptimizerHook, Hook, IterTimerHook,
                     LoggerHook, LrUpdaterHook, MlflowLoggerHook, OptimizerHook,
                     PaviLoggerHook, SyncBuffersHook, TensorboardLoggerHook,
-                    TextLoggerHook, WandbLoggerHook, DADistSamplerSeedHook)
+                    TextLoggerHook, WandbLoggerHook, DADistSamplerSeedHook,
+                    ClassDistSamplerSeedHook)
 from .iter_based_runner import IterBasedRunner, IterLoader
 from .log_buffer import LogBuffer
 from .optimizer import (OPTIMIZER_BUILDERS, OPTIMIZERS,
@@ -38,5 +39,5 @@ __all__ = [
     'Fp16OptimizerHook', 'SyncBuffersHook', 'EMAHook', 'build_runner',
     'RUNNERS', 'allreduce_grads', 'allreduce_params', 'LossScaler'
     'DABaseRunner', 'DAEpochBasedRunner, DARunner', 'DADistSamplerSeedHook',
-    'CatEpochBasedRunner'
+    'CatEpochBasedRunner', 'ClassDistSamplerSeedHook'
 ]

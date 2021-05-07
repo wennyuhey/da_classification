@@ -30,8 +30,6 @@ def _init_dist_pytorch(backend, **kwargs):
     # TODO: se local_rank instead of rank % num_gpus
     rank = int(os.environ['RANK'])
     num_gpus = torch.cuda.device_count()
-    print(num_gpus)
-    print(rank)
     torch.cuda.set_device(rank % num_gpus)
     dist.init_process_group(backend=backend, **kwargs)
 

@@ -24,8 +24,8 @@ class ClasswiseSampler(Sampler):
         random.shuffle(self.idx)
         for i in self.idx:
             random.shuffle(i)
-        self.idx = self.idx[:, 0: self.class_len]
         self.idx = np.array(self.idx)
+        self.idx = self.idx[:, 0: self.class_len]
         self.idx = self.idx.reshape(-1, self.batch_num, self.bs_per_class)
         self.idx = self.idx.transpose(1, 0, 2).flatten()
         self.idx = np.array_split(self.idx[0:self.real_len], int(self.length))
@@ -62,12 +62,14 @@ class DistributedClasswiseSampler(_DistributedSampler):
         random.shuffle(idx)
         for i in idx:
             random.shuffle(i)
+        idx = np.array(idx)
         idx = idx[:, 0: self.class_len]
         idx = idx.reshape(self.num_class, self.num_replicas, -1)
         idx = idx.transpose(1, 0, 2)
         idx = idx.reshape(self.num_replicas, self.num_class, -1, self.bs_per_class)
         idx = idx.transpose(0, 2, 1, 3).reshape(self.num_replicas, -1)
-        indices = idx[self.rank * self.replicas_len : (self.rank + 1) * self.replicas_len]
+        #indices = idx[self.rank * self.replicas_len : (self.rank + 1) * self.replicas_len]
+        indices = idx[self.rank]
         return iter(indices)
 
 

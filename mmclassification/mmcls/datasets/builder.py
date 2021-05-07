@@ -114,8 +114,6 @@ def build_classwise_dataloader(dataset,
     rank, world_size = get_dist_info()
 
     if dist:
-        import pdb
-        pdb.set_trace()
         sampler = DistributedClasswiseSampler(
             dataset=dataset, num_replicas=world_size,
             rank=rank, shuffle=False, class_num=class_per_iter,
