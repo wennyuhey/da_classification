@@ -27,8 +27,9 @@ def classwise_train_model(model,
         build_classwise_dataloader(
             dataset=ds,
             class_per_iter=cfg.data.class_per_iter,
-            batch_size=cfg.data.samples_per_class,
+            batch_per_class=cfg.data.samples_per_class,
             workers_per_gpu=cfg.data.workers_per_gpu,
+            dist=distributed,
             num_gpus=len(cfg.gpu_ids),
             seed=cfg.seed) for ds in dataset
     ]

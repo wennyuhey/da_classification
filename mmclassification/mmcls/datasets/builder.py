@@ -104,7 +104,7 @@ def build_dataloader(dataset,
 
 def build_classwise_dataloader(dataset,
                      class_per_iter,
-                     batch_size,
+                     batch_per_class,
                      workers_per_gpu,
                      dist=False,
                      num_gpus=1,
@@ -114,14 +114,16 @@ def build_classwise_dataloader(dataset,
     rank, world_size = get_dist_info()
 
     if dist:
+        import pdb
+        pdb.set_trace()
         sampler = DistributedClasswiseSampler(
             dataset=dataset, num_replicas=world_size,
-            rank=rank, shuffle=shuffle, class_num=class_per_iter,
-            batch_size=batch_size, seed=seed)
+            rank=rank, shuffle=False, class_num=class_per_iter,
+            batch_size=batch_per_class, seed=seed)
     else:
         sampler = ClasswiseSampler(dataset=dataset,
                          class_num=class_per_iter,
-                         batch_size=batch_size)
+                         batch_size=batch_per_class)
 
     num_workers = workers_per_gpu
 
@@ -132,11 +134,11 @@ def build_classwise_dataloader(dataset,
     if dist:
         dataloader = DataLoader(
             dataset,
-            batch_size=batch_size * class_per_iter,
-            sampler=samper,
+            batch_size=batch_per_class * class_per_iter,
+            sampler=sampler,
             num_workers=num_workers,
             pin_memory=True,
-            shuffle=shuffle,
+            shuffle=False,
             worker_init_fn=init_fn)
     else:
         dataloader = DataLoader(

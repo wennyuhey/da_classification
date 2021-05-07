@@ -70,7 +70,8 @@ def train_model(model,
             model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
 
     # build runner
-    #optimizer = build_optimizer(model, cfg.optimizer)
+    optimizer = build_optimizer(model, cfg.optimizer)
+    """
     optimizer = {}
     for name, module in model.module.named_children():
         if 'backbone' in name:
@@ -85,7 +86,7 @@ def train_model(model,
         elif 'fc' in name:
             optimizer.update({name: build_optimizer(module, cfg.optimizer_fc)})
 
-
+    """
     if cfg.get('runner') is None:
         cfg.runner = {
             'type': 'EpochBasedRunner',
