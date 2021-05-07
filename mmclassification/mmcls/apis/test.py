@@ -178,7 +178,7 @@ def da_single_gpu_test(model, data_loader, domain='target',  test_mode='distance
     return torch.from_numpy(np.vstack(features)), torch.from_numpy(np.vstack(mlp_features)), torch.from_numpy(np.vstack(results))
 
 
-def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
+def da_multi_gpu_test(model, data_loader, domain='target', test_mode='distance', tmpdir=None, gpu_collect=False):
     """Test model with multiple gpus.
 
     This method tests model with multiple gpus and collects the results
@@ -199,6 +199,8 @@ def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     """
     model.eval()
     results = []
+    features = []
+    mlp_features = []
     dataset = data_loader.dataset
     rank, world_size = get_dist_info()
     if rank == 0:
@@ -207,11 +209,15 @@ def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     for i, data in enumerate(data_loader):
         data = {'img_s': data['img']}
         with torch.no_grad():
-            result = model(return_loss=False, **data)
+            feat, mlp_feat, result = model(return_loss=False, domain=domain, test_mode=test_mode,  **data)
         if isinstance(result, list):
             results.extend(result)
+            features.extend(feat)
+            mlp_features.extend(mlp_feat)
         else:
             results.append(result)
+            features.append(feat)
+            mlp_features.append(mlp_feat)
 
         if rank == 0:
             batch_size = data['img_s'].size(0)
@@ -223,6 +229,6 @@ def da_multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
         results = collect_results_gpu(results, len(dataset))
     else:
         results = collect_results_cpu(results, len(dataset), tmpdir)
-    return results
+    return features, mlp_features, results
 
 

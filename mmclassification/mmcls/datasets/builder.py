@@ -7,10 +7,7 @@ from mmcv.parallel import collate
 from mmcv.runner import get_dist_info
 from mmcv.utils import Registry, build_from_cfg
 from torch.utils.data import DataLoader
-from .categorical_loader import CategoricalDataLoader
-from .categorical_sampler import CategoricalSampler
-
-from .samplers import DistributedSampler
+from .samplers import DistributedSampler, ClasswiseSampler, DistributedClasswiseSampler
 
 if platform.system() != 'Windows':
     # https://github.com/pytorch/pytorch/issues/973
@@ -107,65 +104,48 @@ def build_dataloader(dataset,
 
 def build_classwise_dataloader(dataset,
                      class_per_iter,
-                     batch_size,
+                     batch_per_class,
                      workers_per_gpu,
+                     dist=False,
                      num_gpus=1,
                      seed=None,
                      **kwargs):
-    sampler = CategoricalSampler(dataset=dataset,
-                     class_num=class_per_iter,
-                     batch_size=batch_size)
 
     rank, world_size = get_dist_info()
 
-    num_workers = num_gpus * workers_per_gpu
-
-    init_fn = partial(
-        worker_init_fn, num_workers=num_workers, rank=rank,
-        seed=seed) if seed is not None else None
-
-    dataloader = DataLoader(
-        dataset,
-        batch_sampler=sampler,
-        num_workers=num_workers,
-        worker_init_fn=init_fn,
-        pin_memory=True, 
-        shuffle=False)
-    return dataloader
-
-def build_categorical_dataloader(dataset,
-                     class_per_iter,
-                     workers_per_gpu,
-                     num_gpus=1,
-                     dist=True,
-                     shuffle=True,
-                     round_up=True,
-                     drop_last=False,
-                     seed=None,
-                     **kwargs):
-    rank, world_size = get_dist_info()
     if dist:
-        sampler = DistributedSampler(
-            dataset, world_size, rank, shuffle=shuffle, round_up=round_up)
-        shuffle = False
-        batch_size = samples_per_gpu
-        num_workers = workers_per_gpu
+        sampler = DistributedClasswiseSampler(
+            dataset=dataset, num_replicas=world_size,
+            rank=rank, shuffle=False, class_num=class_per_iter,
+            batch_size=batch_per_class, seed=seed)
     else:
-        sampler = None
-        batch_size = num_gpus * class_per_iter
-        num_workers = num_gpus * workers_per_gpu
+        sampler = ClasswiseSampler(dataset=dataset,
+                         class_num=class_per_iter,
+                         batch_size=batch_per_class)
+
+    num_workers = workers_per_gpu
 
     init_fn = partial(
         worker_init_fn, num_workers=num_workers, rank=rank,
         seed=seed) if seed is not None else None
 
-    dataloader = CategoricalDataLoader(
-        dataset = dataset,
-        class_set=[],
-        num_selected_classes=batch_size,
-        seed=seed,
-        num_workers=workers_per_gpu,
-        drop_last=True)
+    if dist:
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_per_class * class_per_iter,
+            sampler=sampler,
+            num_workers=num_workers,
+            pin_memory=True,
+            shuffle=False,
+            worker_init_fn=init_fn)
+    else:
+        dataloader = DataLoader(
+            dataset,
+            batch_sampler=sampler,
+            num_workers=num_workers,
+            worker_init_fn=init_fn,
+            pin_memory=True, 
+            shuffle=False)
     return dataloader
 
 

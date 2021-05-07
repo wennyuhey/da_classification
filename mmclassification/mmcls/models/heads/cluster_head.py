@@ -9,6 +9,7 @@ import torch.nn as nn
 from mmcv.cnn import normal_init
 from mmcv.cnn.bricks import build_linear_layer
 from mmcls.utils import GradReverse
+import torch.distributed as distributed
 
 @HEADS.register_module()
 class DASupClusterHead(BaseHead):
@@ -16,6 +17,7 @@ class DASupClusterHead(BaseHead):
                  in_channels,
                  num_classes,
                  mlp_dim,
+                 distributed=False,
                  momentum=0.9,
                  threshold=0.8,
                  sup_source_loss=None,
@@ -40,6 +42,7 @@ class DASupClusterHead(BaseHead):
         self.barlow_loss = barlow_loss
         self.mlp_flag = mlp_cls
         self.epsilon = 0.05
+        self.distributed = distributed
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -306,11 +309,15 @@ class DASupClusterHead(BaseHead):
         B = Q.shape[1]
         K = Q.shape[0]
         Q_sum = torch.sum(Q)
+        if self.distributed:
+            distributed.all_reduce(Q_sum)
         Q /= Q_sum
 
         #for i in range(self.sinkhorn_iterations):
         for i in range(3):
             sum_of_rows = torch.sum(Q, dim=1, keepdim=True)
+            if self.distributed:
+                distributed.all_reduce(sum_of_rows)
             Q /= sum_of_rows
             Q /= K
             sum_of_cols = torch.sum(Q, dim=0, keepdim=True)
