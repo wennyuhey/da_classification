@@ -225,7 +225,7 @@ class DASupClusterHead(BaseHead):
             target_cls_label = target_label.repeat(self.times_target)
             if self.oracle:
                 #losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
-                losses['target_map_loss'] = self.cls_loss(dist_target, target_cls_label)
+                losses['target_map_loss'] = F.cross_entropy(dist_target, target_cls_label)
                 #losses['mlp_target_map_loss'] = self.cls_loss(mlp_dist_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
