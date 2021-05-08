@@ -9,6 +9,8 @@ model=dict(
         in_channels=2048,
         mlp_dim=128,
         distributed=True,
+        oracle=True,
+        cluster=True,
         threshold=0,
         momentum=0.9,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),

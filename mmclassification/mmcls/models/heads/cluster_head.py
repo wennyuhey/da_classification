@@ -18,6 +18,8 @@ class DASupClusterHead(BaseHead):
                  num_classes,
                  mlp_dim,
                  distributed=False,
+                 oracle=False,
+                 cluster=False,
                  momentum=0.9,
                  threshold=0.8,
                  sup_source_loss=None,
@@ -43,6 +45,8 @@ class DASupClusterHead(BaseHead):
         self.mlp_flag = mlp_cls
         self.epsilon = 0.05
         self.distributed = distributed
+        self.oracle = oracle
+        self.cluster = cluster
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -83,11 +87,6 @@ class DASupClusterHead(BaseHead):
         else:
             self.fc = nn.Linear(self.in_channels, self.num_classes)
         
-        #self.class_map = nn.Parameter(torch.FloatTensor(self.num_classes, self.in_channels).normal_(mean=0, std=0.01))
-        #self.mlp_class_map = nn.Parameter(torch.FloatTensor(self.num_classes, self.mlp_dim).normal_(mean=0, std=0.01))
-
-        #self.class_map = nn.Linear(self.in_channels, self.num_classes, bias=False)
-        #self.mlp_class_map = nn.Linear(self.mlp_dim, self.num_classes, bias=False)
         self.class_map = build_linear_layer({'type':'NormLinear',
                                              'in_features': self.in_channels,
                                              'out_features': self.num_classes,
@@ -175,47 +174,61 @@ class DASupClusterHead(BaseHead):
             label_combine = torch.cat((source_label, label_t))
             losses['combined_supcon_loss'] = self.combined_loss(features_mlp, label_combine)
 
-
-        feat_t = features_target / features_target.norm(dim=1, keepdim=True)
-        dist_target = self.class_map(feat_t)
-        dist_target = dist_target.reshape(self.times_target, batchsize, -1)
-        C = torch.zeros_like(dist_target[0]).to(torch.device('cuda'))
-        dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
-        for i in range(self.times_target):
-            d = dist_target[i]
-            d_max, _ = torch.max(d, dim=1, keepdim=True)
-            mask = dist_max > d_max
-            C = C * mask + d * ~mask
-            dist_max = dist_max * mask + d_max * ~mask
-
-        Q = self.sinkhorn_knopp(C.detach())
-        Q = Q.repeat(self.times_target, 1)
-        
-        losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
-
-        mlp_dist_target = self.mlp_class_map(mlp_target)
-        mlp_dist_target = mlp_dist_target.reshape(self.times_target, batchsize, -1)
-        C = torch.zeros_like(mlp_dist_target[0]).to(torch.device('cuda'))
-        mlp_dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
-        for i in range(self.times_target):
-            d = mlp_dist_target[i]
-            d_max, _ = torch.max(d, dim=1, keepdim=True)
-            mask = mlp_dist_max > d_max
-            C = C * mask + d * ~mask
-            mlp_dist_max = mlp_dist_max * mask + d_max * ~mask
-
-        mlp_Q = self.sinkhorn_knopp(C.detach())
-        mlp_Q = mlp_Q.repeat(self.times_target, 1)
-        losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
-       
+        if self.cluster:
+            source_dist = self.class_map(features_source)
+            losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(self.times_source))
+            mlp_source_dist = self.mlp_class_map(mlp_source)
+            losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(self.times_source))
+    
+            feat_t = features_target / features_target.norm(dim=1, keepdim=True)
+            dist_target = self.class_map(feat_t)
+            dist_target = dist_target.reshape(self.times_target, batchsize, -1)
+            C = torch.zeros_like(dist_target[0]).to(torch.device('cuda'))
+            dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
+            #pred = torch.zeros((batchsize, 1)).to(torch.device('cuda')) - 1
+            for i in range(self.times_target):
+                d = dist_target[i]
+                d_max, d_pred = torch.max(d, dim=1, keepdim=True)
+                mask = dist_max > d_max
+                C = C * mask + d * ~mask
+                #pred = pred * mask + d_pred * ~mask
+                dist_max = dist_max * mask + d_max * ~mask
+    
+            Q = self.sinkhorn_knopp(C.detach())
+            Q = Q.repeat(self.times_target, 1)
+            
+            losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
+     
+            """
+            dist_mean = dist_max.mean()
+            dist_std = dist_max.std()
+            threshold = dist_mean - dist_std
+            confuse_idx = torch.where(dist_max < threshold)[0]
+            pseudo_label = pred[confuse_idx].squeeze().long()
+            target_prob = F.softmax(cls_target[confuse_idx]/0.07, dim=1)
+            losses['confuse_loss'] = F.cross_entropy(target_prob, pseudo_label)
+            """
+    
+            mlp_dist_target = self.mlp_class_map(mlp_target)
+            mlp_dist_target = mlp_dist_target.reshape(self.times_target, batchsize, -1)
+            mlp_C = torch.zeros_like(mlp_dist_target[0]).to(torch.device('cuda'))
+            mlp_dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
+            for i in range(self.times_target):
+                d = mlp_dist_target[i]
+                d_max, _ = torch.max(d, dim=1, keepdim=True)
+                mask = mlp_dist_max > d_max
+                mlp_C = mlp_C * mask + d * ~mask
+                mlp_dist_max = mlp_dist_max * mask + d_max * ~mask
+    
+            mlp_Q = self.sinkhorn_knopp(mlp_C.detach())
+            mlp_Q = mlp_Q.repeat(self.times_target, 1)
+            losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
+           
         if self.cls_loss is not None:
-            if(source_label.size(0) != cls_source.size(0)):
-                source_cls_label = source_label.repeat(2)
-                target_cls_label = target_pseudo.repeat(2)
-            else:
-                source_cls_label = source_label
-                target_cls_label = target_pseudo
-            #losses['target_cls_loss'] = self.cls_loss(features_target, target_cls_label)
+            source_cls_label = source_label.repeat(self.times_source)
+            target_cls_label = target_label.repeat(self.times_target)
+            if self.oracle:
+                losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         return losses
@@ -328,3 +341,8 @@ class DASupClusterHead(BaseHead):
 
         return Q.t()
 
+    """
+    def sinkhron_knopp_dual(self, dist):
+       u = no.array([14309.,  7365., 16640., 12800.,  9512., 14240., 17360., 12160.,
+       10731., 11680., 16000.,  9600.])
+    """
