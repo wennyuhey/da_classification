@@ -121,7 +121,6 @@ class DASupClusterHead(BaseHead):
              reverse_source=None,
              reverse_target=None):
 
-
         batchsize = len(source_label)
         losses = dict()
         if self.barlow_loss:
@@ -134,11 +133,6 @@ class DASupClusterHead(BaseHead):
             on_diag = torch.diagonal(c).add_(-1).pow_(2).sum().mul(scale_loss)
             off_diag = self.off_diagonal(c).pow_(2).sum().mul(scale_loss)
             losses['barlow_loss'] = on_diag + lambd * off_diag
-
-        source_dist = self.class_map(features_source)
-        losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(self.times_source))
-        mlp_source_dist = self.mlp_class_map(mlp_source)
-        losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(self.times_source))
 
         if self.con_target_loss is not None:
             features_mlp_target = torch.cat((mlp_target[0: batchsize].unsqueeze(1),
@@ -179,56 +173,60 @@ class DASupClusterHead(BaseHead):
             losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(self.times_source))
             mlp_source_dist = self.mlp_class_map(mlp_source)
             losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(self.times_source))
-    
+            
             feat_t = features_target / features_target.norm(dim=1, keepdim=True)
             dist_target = self.class_map(feat_t)
-            dist_target = dist_target.reshape(self.times_target, batchsize, -1)
-            C = torch.zeros_like(dist_target[0]).to(torch.device('cuda'))
-            dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
-            #pred = torch.zeros((batchsize, 1)).to(torch.device('cuda')) - 1
-            for i in range(self.times_target):
-                d = dist_target[i]
-                d_max, d_pred = torch.max(d, dim=1, keepdim=True)
-                mask = dist_max > d_max
-                C = C * mask + d * ~mask
-                #pred = pred * mask + d_pred * ~mask
-                dist_max = dist_max * mask + d_max * ~mask
-    
-            Q = self.sinkhorn_knopp(C.detach())
-            Q = Q.repeat(self.times_target, 1)
-            
-            losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
-     
-            """
-            dist_mean = dist_max.mean()
-            dist_std = dist_max.std()
-            threshold = dist_mean - dist_std
-            confuse_idx = torch.where(dist_max < threshold)[0]
-            pseudo_label = pred[confuse_idx].squeeze().long()
-            target_prob = F.softmax(cls_target[confuse_idx]/0.07, dim=1)
-            losses['confuse_loss'] = F.cross_entropy(target_prob, pseudo_label)
-            """
-    
             mlp_dist_target = self.mlp_class_map(mlp_target)
-            mlp_dist_target = mlp_dist_target.reshape(self.times_target, batchsize, -1)
-            mlp_C = torch.zeros_like(mlp_dist_target[0]).to(torch.device('cuda'))
-            mlp_dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
-            for i in range(self.times_target):
-                d = mlp_dist_target[i]
-                d_max, _ = torch.max(d, dim=1, keepdim=True)
-                mask = mlp_dist_max > d_max
-                mlp_C = mlp_C * mask + d * ~mask
-                mlp_dist_max = mlp_dist_max * mask + d_max * ~mask
-    
-            mlp_Q = self.sinkhorn_knopp(mlp_C.detach())
-            mlp_Q = mlp_Q.repeat(self.times_target, 1)
-            losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
-           
+
+            if not self.oracle:
+                dist_target = dist_target.reshape(self.times_target, batchsize, -1)
+                C = torch.zeros_like(dist_target[0]).to(torch.device('cuda'))
+                dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
+                #pred = torch.zeros((batchsize, 1)).to(torch.device('cuda')) - 1
+                for i in range(self.times_target):
+                    d = dist_target[i]
+                    d_max, d_pred = torch.max(d, dim=1, keepdim=True)
+                    mask = dist_max > d_max
+                    C = C * mask + d * ~mask
+                    #pred = pred * mask + d_pred * ~mask
+                    dist_max = dist_max * mask + d_max * ~mask
+        
+                Q = self.sinkhorn_knopp(C.detach())
+                Q = Q.repeat(self.times_target, 1)
+                
+                losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
+         
+                """
+                dist_mean = dist_max.mean()
+                dist_std = dist_max.std()
+                threshold = dist_mean - dist_std
+                confuse_idx = torch.where(dist_max < threshold)[0]
+                pseudo_label = pred[confuse_idx].squeeze().long()
+                target_prob = F.softmax(cls_target[confuse_idx]/0.07, dim=1)
+                losses['confuse_loss'] = F.cross_entropy(target_prob, pseudo_label)
+                """
+        
+                mlp_dist_target = mlp_dist_target.reshape(self.times_target, batchsize, -1)
+                mlp_C = torch.zeros_like(mlp_dist_target[0]).to(torch.device('cuda'))
+                mlp_dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
+                for i in range(self.times_target):
+                    d = mlp_dist_target[i]
+                    d_max, _ = torch.max(d, dim=1, keepdim=True)
+                    mask = mlp_dist_max > d_max
+                    mlp_C = mlp_C * mask + d * ~mask
+                    mlp_dist_max = mlp_dist_max * mask + d_max * ~mask
+        
+                mlp_Q = self.sinkhorn_knopp(mlp_C.detach())
+                mlp_Q = mlp_Q.repeat(self.times_target, 1)
+                losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
+               
         if self.cls_loss is not None:
             source_cls_label = source_label.repeat(self.times_source)
             target_cls_label = target_label.repeat(self.times_target)
             if self.oracle:
-                losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
+                #losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
+                losses['target_map_loss'] = self.cls_loss(dist_target, target_cls_label)
+                #losses['mlp_target_map_loss'] = self.cls_loss(mlp_dist_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         return losses
