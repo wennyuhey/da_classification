@@ -194,7 +194,7 @@ class DASupClusterHead(BaseHead):
                     C = C * mask + d * ~mask
                     #pred = pred * mask + d_pred * ~mask
                     dist_max = dist_max * mask + d_max * ~mask
-                C = C - dist_max
+                #C = C - dist_max
                 Q = self.sinkhorn_knopp(C.detach())
                 Q = Q.repeat(self.times_target, 1)
                 

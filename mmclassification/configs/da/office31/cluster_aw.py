@@ -19,7 +19,7 @@ model=dict(
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
         pseudo=True,
         frozen_map=True,
-        mlp_cls=False,
+        mlp_cls=True,
         topk=(1)))
 
 data = dict(
