@@ -12,12 +12,14 @@ model=dict(
         oracle=False,
         threshold=0,
         momentum=0.9,
+        epsilon=0.05,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #con_target_loss=dict(type='SupConLoss', temperature=0.07, loss_weight=0.1),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
+        pseudo=True,
         frozen_map=True,
-        mlp_cls=True,
+        mlp_cls=False,
         topk=(1)))
 
 data = dict(
@@ -36,3 +38,4 @@ load_from = '/lustre/S/wangyu/PretrainedModels/resnet50-19c8e357_new.pth'
 aux = True
 validation=True
 source_only = False
+pseudo = False

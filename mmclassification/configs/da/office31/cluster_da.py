@@ -7,13 +7,16 @@ model=dict(
         type='DASupClusterHead',
         num_classes=31,
         in_channels=2048,
-        mlp_dim=128,
+        mlp_dim=512,
+        cluster=True,
+        oracle=False,
         threshold=0,
         momentum=0.9,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
-        #con_target_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=0.3),
+        #con_target_loss=dict(type='SupConLoss', temperature=0.07, loss_weight=0.1),
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
+        pseudo=False,
         frozen_map=True,
         mlp_cls=True,
         topk=(1)))
@@ -34,3 +37,4 @@ load_from = '/lustre/S/wangyu/PretrainedModels/resnet50-19c8e357_new.pth'
 aux = True
 validation=True
 source_only = False
+pseudo = False

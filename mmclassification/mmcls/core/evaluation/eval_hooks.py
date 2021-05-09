@@ -2,6 +2,8 @@ import os.path as osp
 
 from mmcv.runner import Hook
 from torch.utils.data import DataLoader
+import numpy as np
+import torch
 
 
 class EvalHook(Hook):
@@ -168,6 +170,9 @@ class DAEvalHook(Hook):
         #results_s = None
         _, _, results_t = da_single_gpu_test(runner.model, self.dataloader[1], domain='target', test_mode=self.test_mode, show=False)
         self.evaluate(runner, results_s, results_t)
+        results_t = torch.from_numpy(np.vstack(results_t))
+        _, pseudo_label = torch.max(results_t, dim=1)
+        runner.data_loader.dataset.update(pseudo_label) 
 
     def after_train_iter(self, runner):
         if self.by_epoch or not self.every_n_iters(runner, self.interval):

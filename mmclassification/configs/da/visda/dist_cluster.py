@@ -9,10 +9,12 @@ model=dict(
         in_channels=2048,
         mlp_dim=128,
         distributed=True,
-        oracle=True,
+        oracle=False,
         cluster=True,
+        pseudo=False,
         threshold=0,
         momentum=0.9,
+        epsilon=1,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #con_target_loss=dict(type='SupConLoss', temperature=0.07, loss_weight=0.1),
@@ -29,7 +31,9 @@ data = dict(
                        source_shuffle=False)))
 
 
-load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'
+#load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'
+load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
 aux = True
 validation=True
 source_only = False
+pseudo = False

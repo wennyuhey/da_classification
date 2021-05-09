@@ -39,6 +39,10 @@ def classwise_train_model(model,
         find_unused_parameters = cfg.get('find_unused_parameters', True)
         # Sets the `find_unused_parameters` parameter in
         # torch.nn.parallel.DistributedDataParallel
+        if cfg.aux:
+            model.backbone = convert_splitnorm_model(model.backbone)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
         model = MMDistributedDataParallel(
             model.cuda(),
             device_ids=[torch.cuda.current_device()],
@@ -134,9 +138,11 @@ def classwise_train_model(model,
     #eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
     eval_hook = DADistEvalHook if distributed else DAEvalHook
     runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
-    #initialmap_cfg = cfg.get('initialize', {})
-    #initialize_hook = InitializeHook
-    #runner.register_hook(initialize_hook(val_dataloader, **initialmap_cfg))
+
+    if cfg.pseudo:
+        initialmap_cfg = cfg.get('initialize', {})
+        initialize_hook = InitializeHook
+        runner.register_hook(initialize_hook(val_dataloader, **initialmap_cfg))
 
     #cluster_cfg = cfg.get('cluster', {})
     #runner.register_hook(DatasetHook(val_dataloader_t, **cluster_cfg))
@@ -145,8 +151,13 @@ def classwise_train_model(model,
     #    runner.resume(cfg.resume_from)
     if cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
-    if cfg.aux:
+    # if distributed:
+    #     runner.model.module = torch.nn.SyncBatchNorm.convert_sync_batchnorm(runner.model.module)
+    if not distributed and cfg.aux:
         runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
+    #if distributed:
+    #    runner.model.module = torch.nn.SyncBatchNorm.convert_sync_batchnorm(runner.model.module)
+
     #if cfg.load_from:
     #    runner.load_checkpoint(cfg.load_from)
     if cfg.resume_from:

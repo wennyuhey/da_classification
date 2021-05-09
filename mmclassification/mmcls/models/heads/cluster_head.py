@@ -22,6 +22,7 @@ class DASupClusterHead(BaseHead):
                  cluster=False,
                  momentum=0.9,
                  threshold=0.8,
+                 epsilon=0.05,
                  sup_source_loss=None,
                  combined_loss=None,
                  con_target_loss=None,
@@ -29,6 +30,7 @@ class DASupClusterHead(BaseHead):
                  barlow_loss=False,
                  select_feat=None,
                  topk=(1, ),
+                 pseudo=False,
                  frozen_map=True,
                  mlp_cls=True):
         super(DASupClusterHead, self).__init__()
@@ -43,10 +45,11 @@ class DASupClusterHead(BaseHead):
         self.soft_cls = None
         self.barlow_loss = barlow_loss
         self.mlp_flag = mlp_cls
-        self.epsilon = 0.05
+        self.epsilon = epsilon
         self.distributed = distributed
         self.oracle = oracle
         self.cluster = cluster
+        self.pseudo = pseudo
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -79,6 +82,7 @@ class DASupClusterHead(BaseHead):
     def _init_layers(self):
         self.contrastive_projector = nn.Sequential(
             nn.Linear(self.in_channels, self.in_channels),
+            nn.BatchNorm1d(self.in_channels),
             nn.ReLU(inplace=True),
             nn.Linear(self.in_channels, self.mlp_dim))
 
@@ -190,7 +194,7 @@ class DASupClusterHead(BaseHead):
                     C = C * mask + d * ~mask
                     #pred = pred * mask + d_pred * ~mask
                     dist_max = dist_max * mask + d_max * ~mask
-        
+                C = C - dist_max
                 Q = self.sinkhorn_knopp(C.detach())
                 Q = Q.repeat(self.times_target, 1)
                 
@@ -223,9 +227,14 @@ class DASupClusterHead(BaseHead):
         if self.cls_loss is not None:
             source_cls_label = source_label.repeat(self.times_source)
             target_cls_label = target_label.repeat(self.times_target)
+            target_pseudo_label = target_pseudo.repeat(self.times_target)
             if self.oracle:
-                #losses['target_cls_loss'] = self.cls_loss(cls_target, target_cls_label)
+                dist_target = self.class_map(features_target)
+                #losses['target_cls_loss'] = F.cross_entropy(cls_target, target_cls_label)
                 losses['target_map_loss'] = F.cross_entropy(dist_target, target_cls_label)
+                #losses['target_mlp_map_loss'] = F.cross_entropy(mlp_dist_target, target_cls_label)
+            if self.pseudo and target_pseudo[0] != -1:
+                losses['target_pseudo_loss'] = self.cls_loss(cls_target, target_pseudo_label)
                 #losses['mlp_target_map_loss'] = self.cls_loss(mlp_dist_target, target_cls_label)
             losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 

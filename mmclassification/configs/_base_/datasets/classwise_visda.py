@@ -46,5 +46,5 @@ data = dict(
         type=dataset_type_val,
         data_prefix='data/visda/validation',
         pipeline=test_pipeline))
-evaluation = dict(by_epoch=True, classwise=12, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(by_epoch=True, classwise=12, test_mode='fc', interval=1, metric='accuracy', metric_options=dict(topk=(1)))
 initialize = dict(by_epoch=True, interval=1)

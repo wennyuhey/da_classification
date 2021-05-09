@@ -6,7 +6,7 @@ from mmcv.utils.parrots_wrapper import _BatchNorm
 
 from ..builder import BACKBONES
 from .base_backbone import BaseBackbone
-
+from mmcls.utils import SplitBatchNorm2d
 
 class BasicBlock(nn.Module):
     """BasicBlock for ResNet.
@@ -248,7 +248,8 @@ class Bottleneck(nn.Module):
 
             if self.downsample is not None:
                 for layer in self.downsample:
-                    if isinstance(layer, _BatchNorm) or isinstance(layer, nn.GroupNorm):
+                    #if isinstance(layer, _BatchNorm) or isinstance(layer, nn.GroupNorm):
+                    if isinstance(layer, SplitBatchNorm2d):
                         identity = layer(identity, domain)
                     else:
                         identity = layer(identity)

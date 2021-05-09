@@ -21,8 +21,8 @@ class InitializeHook(Hook):
 
     def before_train_epoch(self, runner):
         from mmcls.apis import da_single_gpu_test
-        features_s, mlp_features_s, results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
-        features_t, mlp_features_t, results_t = da_single_gpu_test(runner.model, self.dataloader[1], show=False)
+        features_s, mlp_features_s, results_s = da_single_gpu_test(runner.model, self.dataloader[0], bar_show=False, show=False)
+        features_t, mlp_features_t, results_t = da_single_gpu_test(runner.model, self.dataloader[1], bar_show=False, show=False)
         label_s = torch.from_numpy(self.dataloader[0].dataset.get_gt_labels())
         label_t = torch.from_numpy(self.dataloader[1].dataset.get_gt_labels())
         mode = {'mode': 'cosine', 'norm':True}
@@ -30,6 +30,7 @@ class InitializeHook(Hook):
         #runner.model.module.head.mlp_class_map.weight = nn.Parameter(self.initialize_class_map(mlp_features_s, label_s, mlp_features_t, label_t, mode))
         pseudo_label, _ = self.initialize_class_map(features_s, label_s, features_t, label_t, mode)
         runner.data_loader.dataset.update(pseudo_label)
+        print('Psuedo Label done')
     """
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
@@ -50,8 +51,8 @@ class InitializeHook(Hook):
     """
     def initialize_class_map(self, features_s, label_s, features_t, label_t, mode):
         center_s = self.calculate_center(features_s, label_s)
-        center_t = self.k_means(features=features_t, center=center_s, gt_label=label_s, label_t=label_t, **mode)
-        return center_t
+        pseudo_label, center_t = self.k_means(features=features_t, center=center_s, gt_label=label_s, label_t=label_t, **mode)
+        return pseudo_label, center_t
 
     def k_means(self, mode, norm, features, center, gt_label, label_t):
         modes = {'cosine': self.cosine_dist, 'mse': self.mse_dist}
