@@ -23,6 +23,9 @@ class DASupClusterHead(BaseHead):
                  momentum=0.9,
                  threshold=0.8,
                  epsilon=0.05,
+                 bn_projector=False,
+                 feat_norm=True,
+                 stable_cost=False,
                  sup_source_loss=None,
                  combined_loss=None,
                  con_target_loss=None,
@@ -50,6 +53,9 @@ class DASupClusterHead(BaseHead):
         self.oracle = oracle
         self.cluster = cluster
         self.pseudo = pseudo
+        self.bn_projector = bn_projector
+        self.feat_norm = feat_norm
+        self.stable_cost = stable_cost
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -80,11 +86,17 @@ class DASupClusterHead(BaseHead):
 
 
     def _init_layers(self):
-        self.contrastive_projector = nn.Sequential(
-            nn.Linear(self.in_channels, self.in_channels),
-            nn.BatchNorm1d(self.in_channels),
-            nn.ReLU(inplace=True),
-            nn.Linear(self.in_channels, self.mlp_dim))
+        if self.bn_projector:
+            self.contrastive_projector = nn.Sequential(
+                nn.Linear(self.in_channels, self.in_channels),
+                nn.BatchNorm1d(self.in_channels),
+                nn.ReLU(inplace=True),
+                nn.Linear(self.in_channels, self.mlp_dim))
+        else:
+            self.contrastive_projector = nn.Sequential(
+                nn.Linear(self.in_channels, self.in_channels),
+                nn.ReLU(inplace=True),
+                nn.Linear(self.in_channels, self.mlp_dim))
 
         if self.mlp_flag:
             self.fc = nn.Linear(self.mlp_dim, self.num_classes)
@@ -178,7 +190,11 @@ class DASupClusterHead(BaseHead):
             mlp_source_dist = self.mlp_class_map(mlp_source)
             losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(self.times_source))
             
-            feat_t = features_target / features_target.norm(dim=1, keepdim=True)
+
+            if self.feat_norm:
+                feat_t = features_target / features_target.norm(dim=1, keepdim=True)
+            else:
+                feat_t = features_target
             dist_target = self.class_map(feat_t)
             mlp_dist_target = self.mlp_class_map(mlp_target)
 
@@ -194,7 +210,8 @@ class DASupClusterHead(BaseHead):
                     C = C * mask + d * ~mask
                     #pred = pred * mask + d_pred * ~mask
                     dist_max = dist_max * mask + d_max * ~mask
-                #C = C - dist_max
+                if self.stable_cost:
+                    C = C - dist_max
                 Q = self.sinkhorn_knopp(C.detach())
                 Q = Q.repeat(self.times_target, 1)
                 
@@ -219,6 +236,9 @@ class DASupClusterHead(BaseHead):
                     mask = mlp_dist_max > d_max
                     mlp_C = mlp_C * mask + d * ~mask
                     mlp_dist_max = mlp_dist_max * mask + d_max * ~mask
+
+                if self.stable_cost:
+                    mlp_C = mlp_C - mlp_dist_max
         
                 mlp_Q = self.sinkhorn_knopp(mlp_C.detach())
                 mlp_Q = mlp_Q.repeat(self.times_target, 1)

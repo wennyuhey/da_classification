@@ -139,7 +139,7 @@ def classwise_train_model(model,
     eval_hook = DADistEvalHook if distributed else DAEvalHook
     runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
 
-    if cfg.pseudo:
+    if cfg.initialize_pseudo:
         initialmap_cfg = cfg.get('initialize', {})
         initialize_hook = InitializeHook
         runner.register_hook(initialize_hook(val_dataloader, **initialmap_cfg))

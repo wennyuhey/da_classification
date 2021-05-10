@@ -8,13 +8,16 @@ model=dict(
         num_classes=12,
         in_channels=2048,
         mlp_dim=128,
+        epsilon=1,
         distributed=True,
         oracle=False,
         cluster=True,
-        pseudo=False,
+        pseudo=True,
+        bn_projector=False,
+        feat_norm=False,
+        stable_cost=True,
         threshold=0,
         momentum=0.9,
-        epsilon=1,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #con_target_loss=dict(type='SupConLoss', temperature=0.07, loss_weight=0.1),
@@ -36,4 +39,4 @@ load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
 aux = True
 validation=True
 source_only = False
-pseudo = False
+initialize_pseudo = False

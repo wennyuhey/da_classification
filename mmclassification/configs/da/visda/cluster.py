@@ -11,9 +11,12 @@ model=dict(
         threshold=0,
         momentum=0.9,
         cluster=True,
-        pseudo=False,
+        pseudo=True,
         epsilon=1,
         oracle=False,
+        bn_projector=False,
+        feat_norm=False,
+        stable_cost=True,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #con_target_loss=dict(type='SupConLoss', temperature=0.07, loss_weight=0.1),
@@ -31,7 +34,8 @@ data = dict(
 
 
 load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'
+#resume_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/pseudolabel/mlp_True+128/singlegpu/epoch_6.pth'
 aux = True
 validation=True
 source_only = False
-pseudo = False
+initialize_pseudo = False

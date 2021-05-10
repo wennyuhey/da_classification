@@ -11,26 +11,37 @@ import torch
 
 class InitializeHook(Hook):
 
-    def __init__(self, dataloader, interval=1, by_epoch=True):
+    def __init__(self, dataloader, interval=1, kmeans=True, by_epoch=True):
         #if not isinstance(dataloader, DataLoader):
         #    raise TypeError('dataloader must be a pytorch DataLoader, but got'
         #                    f' {type(dataloader)}')
         self.dataloader = dataloader
         self.interval = interval
         self.by_epoch = by_epoch
+        self.kmeans = kmeans
 
     def before_train_epoch(self, runner):
-        from mmcls.apis import da_single_gpu_test
-        features_s, mlp_features_s, results_s = da_single_gpu_test(runner.model, self.dataloader[0], bar_show=False, show=False)
-        features_t, mlp_features_t, results_t = da_single_gpu_test(runner.model, self.dataloader[1], bar_show=False, show=False)
-        label_s = torch.from_numpy(self.dataloader[0].dataset.get_gt_labels())
-        label_t = torch.from_numpy(self.dataloader[1].dataset.get_gt_labels())
-        mode = {'mode': 'cosine', 'norm':True}
-        #runner.model.module.head.class_map.weight = nn.Parameter(self.initialize_class_map(features_s, label_s, features_t, label_t, mode))
-        #runner.model.module.head.mlp_class_map.weight = nn.Parameter(self.initialize_class_map(mlp_features_s, label_s, mlp_features_t, label_t, mode))
-        pseudo_label, _ = self.initialize_class_map(features_s, label_s, features_t, label_t, mode)
-        runner.data_loader.dataset.update(pseudo_label)
-        print('Psuedo Label done')
+        if runner.epoch == 0:
+            if self.kmeans:
+                from mmcls.apis import da_single_gpu_test
+                features_s, mlp_features_s, results_s = da_single_gpu_test(runner.model, self.dataloader[0], bar_show=False, show=False)
+                features_t, mlp_features_t, results_t = da_single_gpu_test(runner.model, self.dataloader[1], bar_show=False, show=False)
+                label_s = torch.from_numpy(self.dataloader[0].dataset.get_gt_labels())
+                label_t = torch.from_numpy(self.dataloader[1].dataset.get_gt_labels())
+                mode = {'mode': 'cosine', 'norm':True}
+                #runner.model.module.head.class_map.weight = nn.Parameter(self.initialize_class_map(features_s, label_s, features_t, label_t, mode))
+                #runner.model.module.head.mlp_class_map.weight = nn.Parameter(self.initialize_class_map(mlp_features_s, label_s, mlp_features_t, label_t, mode))
+                pseudo_label, _ = self.initialize_class_map(features_s, label_s, features_t, label_t, mode)
+                runner.data_loader.dataset.update(pseudo_label)
+                print('K-Means initializing psuedo Label done')
+            else:
+                from mmcls.apis import da_single_gpu_test
+                _, _, results_t = da_single_gpu_test(runner.model, self.dataloader[1], bar_show=False, show=False)
+                results_t = torch.from_numpy(np.vstack(results_t))
+                _, pseudo_label = torch.max(results_t, dim=1)
+                runner.data_loader.dataset.update(pseudo_label)
+                print('Pseudo Label initialization done')
+
     """
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
