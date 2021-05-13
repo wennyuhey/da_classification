@@ -21,7 +21,7 @@ class InitializeHook(Hook):
         self.kmeans = kmeans
 
     def before_train_epoch(self, runner):
-        if runner.epoch == 0:
+        if self.every_n_epochs(runner, self.interval):
             if self.kmeans:
                 from mmcls.apis import da_single_gpu_test
                 features_s, mlp_features_s, results_s = da_single_gpu_test(runner.model, self.dataloader[0], bar_show=False, show=False)
@@ -31,7 +31,12 @@ class InitializeHook(Hook):
                 mode = {'mode': 'cosine', 'norm':True}
                 #runner.model.module.head.class_map.weight = nn.Parameter(self.initialize_class_map(features_s, label_s, features_t, label_t, mode))
                 #runner.model.module.head.mlp_class_map.weight = nn.Parameter(self.initialize_class_map(mlp_features_s, label_s, mlp_features_t, label_t, mode))
-                pseudo_label, _ = self.initialize_class_map(features_s, label_s, features_t, label_t, mode)
+                if runner.epoch == 0: 
+                    pseudo_label, _ = self.initialize_class_map(features_s, label_s, features_t, label_t, mode)
+                else:
+                    results_t = torch.from_numpy(np.vstack(results_t))
+                    _, pseudo_label_init = torch.max(results_t, dim=1)
+                    pseudo_label, _ = self.initialize_class_map(torch.cat((features_s, features_t)), torch.cat((label_s, pseudo_label_init)), features_t, label_t, mode)
                 runner.data_loader.dataset.update(pseudo_label)
                 print('K-Means initializing psuedo Label done')
             else:

@@ -1,6 +1,6 @@
 _base_ = [
-    '../../_base_/models/da_resnet101.py', '../../_base_/schedules/dist_classwise_visda.py',
-    '../../_base_/visda_default_runtime.py', '../../_base_/datasets/dist_classwise_visda.py'
+    '../../_base_/models/da_resnet50.py', '../../_base_/schedules/dist_classwise_office.py',
+    '../../_base_/visda_default_runtime.py', '../../_base_/datasets/dist_classwise_office_da.py'
 ]
 model=dict(
     head=dict(
@@ -28,15 +28,14 @@ model=dict(
 
 data = dict(
     train=dict(
-        load_mode=dict(target_balance=True,
-                       target_shuffle=False,
+        load_mode=dict(target_balance=False,
+                       target_shuffle=True,
                        source_balance=True,
                        source_shuffle=False)))
 
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'
 load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
-#load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/pseudolabel/norm_nobn_eps05/epoch_21.pth'
 #load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/latest.pth'
 aux = True
 validation=True

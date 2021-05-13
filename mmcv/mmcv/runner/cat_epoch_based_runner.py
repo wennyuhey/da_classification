@@ -26,7 +26,6 @@ class CatEpochBasedRunner(DABaseRunner):
         data_s = {}
         data_s['img_s'] = data_source.pop('img')
         data_s['gt_label_s'] = data_source.pop('gt_label')
-
         if not self.source_only:
             data_target = data.pop('target')
             data_t = {}
@@ -35,7 +34,6 @@ class CatEpochBasedRunner(DABaseRunner):
             data_t['pseudo_label'] = data_target.pop('pseudo_label')
         else:
             data_t = None
-
         if self.batch_processor is not None:
             outputs = self.batch_processor(
                 self.model, data, data, train_mode=train_mode, **kwargs)
@@ -70,7 +68,6 @@ class CatEpochBasedRunner(DABaseRunner):
                 self.run_iter(input_data, train_mode=True)
                 self.call_hook('after_train_iter')
                 self._iter += 1
-
         self.call_hook('after_train_epoch')
         self._epoch += 1
 

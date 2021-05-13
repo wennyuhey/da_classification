@@ -353,6 +353,10 @@ class DASupClusterHead(BaseHead):
             distributed.all_reduce(Q_sum)
         Q /= Q_sum
 
+        u = torch.Tensor([14309.,  7365., 16640., 12800.,  9512., 14240., 17360., 12160., 10731., 11680., 16000.,  9600.]).to(torch.device('cuda'))
+        u = u / u.sum()
+        u = u.reshape(K, 1)
+
         #for i in range(self.sinkhorn_iterations):
         for i in range(3):
             sum_of_rows = torch.sum(Q, dim=1, keepdim=True)
@@ -362,11 +366,35 @@ class DASupClusterHead(BaseHead):
             Q /= K
             sum_of_cols = torch.sum(Q, dim=0, keepdim=True)
             Q /= sum_of_cols
-            Q /= B
+            #Q /= B
+            Q *= u
     
-        Q *= B
+        #Q *= B
+        Q /= u
 
         return Q.t()
+
+    def sinkhorn_knopp_dual(self, dist):
+        Q = torch.exp(dist/self.epsilon)
+        B = Q.shape[0]
+        K = Q.shape[1]
+        
+        u = (torch.arange(B)+1).to(torch.device('cuda'))
+        u = u / u.sum()
+        u = u.reshape(B, 1)
+        #u = (torch.ones((B, 1)) / B).to(torch.device('cuda'))
+
+        v = (torch.ones((K, 1)) / K).to(torch.device('cuda'))
+
+        phi = torch.ones((B, 1)).to(torch.device('cuda'))
+        psi = torch.ones((K, 1)).to(torch.device('cuda'))
+
+        for i in range(3):
+            phi = u / torch.matmul(Q, psi)
+            psi = v / torch.matmul(Q.T, phi)
+
+        P = torch.diag(phi.squeeze()) @ Q @ torch.diag(psi.squeeze())
+        return (P / u)
 
     """
     def sinkhron_knopp_dual(self, dist):
