@@ -26,6 +26,7 @@ class DASupClusterHead(BaseHead):
                  bn_projector=False,
                  feat_norm=True,
                  stable_cost=False,
+                 balance_trans=False,
                  sup_source_loss=None,
                  combined_loss=None,
                  con_target_loss=None,
@@ -56,6 +57,7 @@ class DASupClusterHead(BaseHead):
         self.bn_projector = bn_projector
         self.feat_norm = feat_norm
         self.stable_cost = stable_cost
+        self.balance_trans = balance_trans
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -212,7 +214,10 @@ class DASupClusterHead(BaseHead):
                     dist_max = dist_max * mask + d_max * ~mask
                 if self.stable_cost:
                     C = C - dist_max
-                Q = self.sinkhorn_knopp(C.detach())
+                if self.balance_trans:
+                    Q = self.sinkhorn_knopp_balance(C.detach())
+                else:
+                    Q = self.sinkhorn_knopp(C.detach())
                 Q = Q.repeat(self.times_target, 1)
                 
                 losses['target_map_loss'] = - torch.mean(torch.sum(Q * F.log_softmax(dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
@@ -240,7 +245,10 @@ class DASupClusterHead(BaseHead):
                 if self.stable_cost:
                     mlp_C = mlp_C - mlp_dist_max
         
-                mlp_Q = self.sinkhorn_knopp(mlp_C.detach())
+                if self.balance_trans:
+                    mlp_Q = self.sinkhorn_knopp_balance(mlp_C.detach())
+                else:
+                    mlp_Q = self.sinkhorn_knopp(mlp_C.detach())
                 mlp_Q = mlp_Q.repeat(self.times_target, 1)
                 losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
                
@@ -353,7 +361,8 @@ class DASupClusterHead(BaseHead):
             distributed.all_reduce(Q_sum)
         Q /= Q_sum
 
-        u = torch.Tensor([14309.,  7365., 16640., 12800.,  9512., 14240., 17360., 12160., 10731., 11680., 16000.,  9600.]).to(torch.device('cuda'))
+        #u = torch.Tensor([14309.,  7365., 16640., 12800.,  9512., 14240., 17360., 12160., 10731., 11680., 16000.,  9600.]).to(torch.device('cuda'))
+        u = torch.ones(K).to(torch.device('cuda'))
         u = u / u.sum()
         u = u.reshape(K, 1)
 
@@ -366,14 +375,44 @@ class DASupClusterHead(BaseHead):
             Q /= K
             sum_of_cols = torch.sum(Q, dim=0, keepdim=True)
             Q /= sum_of_cols
-            #Q /= B
-            Q *= u
+            Q /= B
+            #Q *= u
     
-        #Q *= B
-        Q /= u
+        Q *= B
+        #Q /= u
 
         return Q.t()
 
+    def sinkhorn_knopp_balance(self, dist):
+        Q = torch.exp(dist/self.epsilon).t()
+        B = Q.shape[1]
+        K = Q.shape[0]
+        Q_sum = torch.sum(Q)
+        if self.distributed:
+            distributed.all_reduce(Q_sum)
+        Q /= Q_sum
+
+        u = torch.Tensor([14309.,  7365., 16640., 12800.,  9512., 14240., 17360., 12160., 10731., 11680., 16000.,  9600.]).to(torch.device('cuda'))
+        u = u / u.sum()
+        u = u.reshape(K, 1)
+
+        v = torch.ones(B).to(torch.device('cuda'))
+        v = v / B
+
+        for i in range(3):
+            sum_of_rows = torch.sum(Q, dim=1, keepdim=True)
+            if self.distributed:
+                distributed.all_reduce(sum_of_rows)
+            Q /= sum_of_rows
+            Q *= u
+            sum_of_cols = torch.sum(Q, dim=0, keepdim=True)
+            Q /= sum_of_cols
+            Q *= v
+
+        Q /= v
+        return Q.T
+
+    """
     def sinkhorn_knopp_dual(self, dist):
         Q = torch.exp(dist/self.epsilon)
         B = Q.shape[0]
@@ -396,7 +435,6 @@ class DASupClusterHead(BaseHead):
         P = torch.diag(phi.squeeze()) @ Q @ torch.diag(psi.squeeze())
         return (P / u)
 
-    """
     def sinkhron_knopp_dual(self, dist):
        u = no.array([14309.,  7365., 16640., 12800.,  9512., 14240., 17360., 12160.,
        10731., 11680., 16000.,  9600.])

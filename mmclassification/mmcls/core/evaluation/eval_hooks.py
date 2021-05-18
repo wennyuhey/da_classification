@@ -157,8 +157,9 @@ class DAEvalHook(Hook):
         self.by_epoch = by_epoch
         self.classwise = classwise
         self.test_mode = test_mode
+    """
     def before_train_epoch(self, runner):
-        if runner.epoch != 11:
+        if runner.epoch != 5:
             return
         from mmcls.apis import da_single_gpu_test
         #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
@@ -169,6 +170,7 @@ class DAEvalHook(Hook):
         _, pseudo_label = torch.max(results_t, dim=1)
         runner.data_loader.dataset.update(pseudo_label)
         print('update pseudo label')
+    """
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return

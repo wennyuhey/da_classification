@@ -13,9 +13,10 @@ model=dict(
         oracle=False,
         cluster=True,
         pseudo=True,
-        bn_projector=False,
+        bn_projector=True,
         feat_norm=True,
         stable_cost=False,
+        balance_trans=False,
         threshold=0,
         momentum=0.9,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
@@ -28,8 +29,8 @@ model=dict(
 
 data = dict(
     train=dict(
-        load_mode=dict(target_balance=True,
-                       target_shuffle=False,
+        load_mode=dict(target_balance=False,
+                       target_shuffle=True,
                        source_balance=True,
                        source_shuffle=False)))
 

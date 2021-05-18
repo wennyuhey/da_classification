@@ -15,7 +15,6 @@ model=dict(
         epsilon=0.05,
         oracle=False,
         bn_projector=True,
-        balance_trans=True,
         feat_norm=True,
         stable_cost=False,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
