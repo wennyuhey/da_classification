@@ -152,15 +152,15 @@ def classwise_train_model(model,
     #if not distributed and cfg.aux:
     #    runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
 
-    if cfg.load_from:
-        runner.load_checkpoint(cfg.load_from)
+    #if cfg.load_from:
+    #    runner.load_checkpoint(cfg.load_from)
     # if distributed:
     #     runner.model.module = torch.nn.SyncBatchNorm.convert_sync_batchnorm(runner.model.module)
     if not distributed and cfg.aux:
         runner.model.module.backbone = convert_splitnorm_model(runner.model.module.backbone)
 
-    #if cfg.load_from:
-    #    runner.load_checkpoint(cfg.load_from)
+    if cfg.load_from:
+        runner.load_checkpoint(cfg.load_from)
     if cfg.resume_from:
         runner.resume(cfg.resume_from)
     runner.run(data_loaders, cfg.workflow)

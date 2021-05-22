@@ -22,6 +22,7 @@ class InitializeHook(Hook):
 
     def before_train_epoch(self, runner):
         if self.every_n_epochs(runner, self.interval):
+        #if runner.epoch == 0:
             if self.kmeans:
                 from mmcls.apis import da_single_gpu_test
                 features_s, mlp_features_s, results_s = da_single_gpu_test(runner.model, self.dataloader[0], bar_show=False, show=False)
@@ -36,7 +37,8 @@ class InitializeHook(Hook):
                 else:
                     results_t = torch.from_numpy(np.vstack(results_t))
                     _, pseudo_label_init = torch.max(results_t, dim=1)
-                    pseudo_label, _ = self.initialize_class_map(torch.cat((features_s, features_t)), torch.cat((label_s, pseudo_label_init)), features_t, label_t, mode)
+                    #pseudo_label, _ = self.initialize_class_map(torch.cat((features_s, features_t)), torch.cat((label_s, pseudo_label_init)), features_t, label_t, mode)
+                    pseudo_label, _ = self.initialize_class_map(features_t, pseudo_label_init, features_t, label_t, mode)
                 runner.data_loader.dataset.update(pseudo_label)
                 print('K-Means initializing psuedo Label done')
             else:

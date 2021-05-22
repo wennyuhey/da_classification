@@ -16,9 +16,8 @@ model=dict(
         oracle=False,
         bn_projector=False,
         balance_trans=False,
-        feat_norm=True,
-        stable_cost=False,
-        cls_map=True,
+        feat_norm=False,
+        stable_cost=True,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #con_target_loss=dict(type='SupConLoss', temperature=0.07, loss_weight=0.1),
@@ -35,13 +34,12 @@ data = dict(
                        source_shuffle=False)))
 
 
-load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
-#load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/epoch_5.pth'
+#load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'
 #resume_from = '/lustre/S/wangyu/env/contrastive/mmclassification/work_dirs/cluster/latest.pth'
 #resume_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/pseudolabel/singlegpu/norm_eps005_nobn/epoch_5.pth'
 #load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/latest.pth'
 #resume_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/pseudolabel/singlegpu/norm_eps005_nobn/epoch_11.pth'
-#resume_from = '/lustre/S/wangyu/da_log/visda/singlegpu/bn_norm_label_eps005_mlp_128/epoch_17.pth'
+load_from = '/lustre/S/wangyu/da_log/visda/singlegpu/bn_norm_label_eps005_mlp_128/epoch_17.pth'
 aux = True
 validation=True
 source_only = False

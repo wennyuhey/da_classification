@@ -13,8 +13,9 @@ model=dict(
         oracle=False,
         cluster=True,
         pseudo=True,
-        bn_projector=True,
+        bn_projector=False,
         feat_norm=True,
+        cls_map=False,
         stable_cost=False,
         balance_trans=False,
         threshold=0,
@@ -36,9 +37,13 @@ data = dict(
 
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_batch256_imagenet_20200708-753f3608.pth'
-load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
+#load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
+#load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/latest.pth'
+#load_from = '/lustre/S/wangyu/da_log/visda/dist/nobn_nonorm_label_eps005_mlp_128_load/epoch_30.pth'
+#load_from = '/lustre/S/wangyu/da_log/visda/dist/nobn_norm_nolabel_eps005_mlp_128/latest.pth'
 #load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/pseudolabel/norm_nobn_eps05/epoch_21.pth'
 #load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/latest.pth'
+load_from = '/lustre/S/wangyu/da_log/visda/dist/nobn_norm_nolabel_eps005_mlp_128/latest.pth'
 aux = True
 validation=True
 source_only = False

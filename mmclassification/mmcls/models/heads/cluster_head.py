@@ -27,11 +27,13 @@ class DASupClusterHead(BaseHead):
                  feat_norm=True,
                  stable_cost=False,
                  balance_trans=False,
+                 sourcecls=True,
                  sup_source_loss=None,
                  combined_loss=None,
                  con_target_loss=None,
                  cls_loss=None,
                  barlow_loss=False,
+                 cls_map=False,
                  select_feat=None,
                  topk=(1, ),
                  pseudo=False,
@@ -58,6 +60,8 @@ class DASupClusterHead(BaseHead):
         self.feat_norm = feat_norm
         self.stable_cost = stable_cost
         self.balance_trans = balance_trans
+        self.cls_map = cls_map
+        self.sourcecls = sourcecls
 
         if sup_source_loss is not None:
             self.sup_source_loss = build_loss(sup_source_loss)
@@ -113,7 +117,12 @@ class DASupClusterHead(BaseHead):
                                              'in_features': self.mlp_dim,
                                              'out_features': self.num_classes,
                                              'bias': False})
-
+        if self.cls_map:
+            self.fc_class_map = build_linear_layer({'type':'NormLinear',
+                                                 'in_features': self.num_classes,
+                                                 'out_features': self.num_classes,
+                                                 'bias': False})
+    
     def init_weights(self):
         normal_init(self.fc, mean=0, std=0.01, bias=0)
         for m in self.contrastive_projector:
@@ -191,7 +200,10 @@ class DASupClusterHead(BaseHead):
             losses['map_kl_loss'] = self.cls_loss(source_dist, source_label.repeat(self.times_source))
             mlp_source_dist = self.mlp_class_map(mlp_source)
             losses['mlp_kl_loss'] = self.cls_loss(mlp_source_dist, source_label.repeat(self.times_source))
-            
+            if self.cls_map:
+                cls_source_dist = self.fc_class_map(cls_source)
+                losses['cls_kl_loss'] = self.cls_loss(cls_source_dist, source_label.repeat(self.times_source))
+
 
             if self.feat_norm:
                 feat_t = features_target / features_target.norm(dim=1, keepdim=True)
@@ -199,6 +211,9 @@ class DASupClusterHead(BaseHead):
                 feat_t = features_target
             dist_target = self.class_map(feat_t)
             mlp_dist_target = self.mlp_class_map(mlp_target)
+            if self.cls_map:
+                cls_t = cls_target / cls_target.norm(dim=1, keepdim=True)
+                cls_dist_t = self.fc_class_map(cls_t)
 
             if not self.oracle:
                 dist_target = dist_target.reshape(self.times_target, batchsize, -1)
@@ -251,6 +266,25 @@ class DASupClusterHead(BaseHead):
                     mlp_Q = self.sinkhorn_knopp(mlp_C.detach())
                 mlp_Q = mlp_Q.repeat(self.times_target, 1)
                 losses['mlp_target_map_loss'] = - torch.mean(torch.sum(mlp_Q * F.log_softmax(mlp_dist_target.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
+
+                if self.cls_map:
+                    cls_dist_t = cls_dist_t.reshape(self.times_target, batchsize, -1)
+                    cls_C = torch.zeros_like(cls_dist_t[0]).to(torch.device('cuda'))
+                    cls_dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
+                    for i in range(self.times_target):
+                        d = cls_dist_t[i]
+                        d_max, _ = torch.max(d, dim=1, keepdim=True)
+                        mask = cls_dist_max > d_max
+                        cls_C = cls_C * mask + d * ~mask
+                        cls_dist_max = cls_dist_max * mask + d_max * ~mask
+    
+                    if self.stable_cost:
+                        cls_C = cls_C - cls_dist_max
+    
+                    cls_Q = self.sinkhorn_knopp(cls_C.detach())
+                    cls_Q = cls_Q.repeat(self.times_target, 1)
+                    losses['cls_target_map_loss'] = - torch.mean(torch.sum(cls_Q * F.log_softmax(cls_dist_t.reshape(batchsize * self.times_target, -1), dim=1), dim=1))
+    
                
         if self.cls_loss is not None:
             source_cls_label = source_label.repeat(self.times_source)
@@ -264,7 +298,9 @@ class DASupClusterHead(BaseHead):
             if self.pseudo and target_pseudo[0] != -1:
                 losses['target_pseudo_loss'] = self.cls_loss(cls_target, target_pseudo_label)
                 #losses['mlp_target_map_loss'] = self.cls_loss(mlp_dist_target, target_cls_label)
-            losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
+            #if not self.cls_map:
+            if self.sourcecls:
+                losses['source_cls_loss'] = self.cls_loss(cls_source, source_cls_label)
 
         return losses
 

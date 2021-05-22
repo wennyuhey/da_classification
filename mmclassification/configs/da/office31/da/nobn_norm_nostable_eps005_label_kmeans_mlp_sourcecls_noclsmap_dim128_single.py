@@ -1,6 +1,6 @@
 _base_ = [
-    '../../_base_/models/da_resnet50.py', '../../_base_/schedules/cat_office.py',
-    '../../_base_/default_runtime.py', '../../_base_/datasets/categorical_office_da.py'
+    '../../../_base_/models/da_resnet50.py', '../../../_base_/schedules/cat_office.py',
+    '../../../_base_/default_runtime.py', '../../../_base_/datasets/categorical_office_da.py'
 ]
 model=dict(
     head=dict(
@@ -11,11 +11,12 @@ model=dict(
         cluster=True,
         oracle=False,
         bn_projector=False,
-        feat_norm=False,
-        stable_cost=True,
-        epsilon=1,
+        feat_norm=True,
+        stable_cost=False,
+        sourcecls=True,
+        epsilon=0.05,
         threshold=0,
-        cls_map=True,
+        cls_map=False,
         momentum=0.9,
         #sup_source_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
         #combined_loss=dict(type='SupConLoss', temperature=0.1, loss_weight=1),
@@ -23,7 +24,7 @@ model=dict(
         cls_loss=dict(type='CrossEntropyLoss', loss_weight=1),
         pseudo=True,
         frozen_map=True,
-        mlp_cls=False,
+        mlp_cls=True,
         topk=(1)))
 
 data = dict(
@@ -42,4 +43,4 @@ load_from = '/lustre/S/wangyu/PretrainedModels/resnet50_new.pth'
 aux = True
 validation=True
 source_only = False
-initialize_pseudo = False
+initialize_pseudo = True

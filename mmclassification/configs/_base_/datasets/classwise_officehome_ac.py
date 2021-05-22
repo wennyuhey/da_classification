@@ -1,6 +1,6 @@
 # dataset settings
-dataset_type = 'ClasswiseOffice'
-dataset_type_val = 'PartialOffice'
+dataset_type = 'ClasswiseOfficeHome'
+dataset_type_val = 'PartialOfficeHome'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -24,24 +24,29 @@ test_pipeline = [
 ]
 data = dict(
     workers_per_gpu=30,
-    class_per_iter=31,
-    samples_per_class=2,
+    class_per_iter=35,
+    samples_per_class=3,
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
-        times=3,
-        data_prefix='data/office31/',
-        source_prefix='dslr',
-        target_prefix='amazon',
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/',
+        source_prefix='Art',
+        target_prefix='Clipart',
+        times=2,
+        load_mode=dict(target_balance=False,
+                       target_shuffle=True,
+                       source_balance=False,
+                       source_shuffle=True),
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type_val,
-        data_prefix='data/office31/dslr/images',
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/Art',
         pipeline=test_pipeline),
     test=dict(
         # replace `data/val` with `data/test` for standard test
         type=dataset_type_val,
-        data_prefix='data/office31/amazon/images',
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/Clipart',
         pipeline=test_pipeline))
-evaluation = dict(classwise=31, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))
-initialize = dict(by_epoch=True, kmeans=True, interval=1)
+evaluation = dict(classwise=65, test_mode='distance' ,interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+#cluster = dict(interval=1)
+initialize = dict(by_epoch=True, interval=1)

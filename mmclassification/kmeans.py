@@ -5,7 +5,7 @@ import torch
 import openpyxl
 
 device = torch.device('cuda')
-refs = torch.Tensor(range(12)).unsqueeze(1).to(device)
+refs = torch.Tensor(range(31)).unsqueeze(1).to(device)
 
 def cosine_dist(feature, center, norm):
     if norm:
@@ -78,11 +78,19 @@ def main():
     worksheet.tilte='classwise_office'
 
     label_names = os.listdir('/lustre/S/wangyu/dataset/office-31/amazon/images/')
+    CLASSES = np.array([
+        'back_pack', 'bike', 'bike_helmet', 'bookcase', 'bottle', 'calculator', 'desk_chair',
+        'desk_lamp', 'desktop_computer', 'file_cabinet', 'headphones', 'keyboard', 'laptop_computer',
+        'letter_tray', 'mobile_phone', 'monitor', 'mouse', 'mug', 'paper_notebook', 'pen', 'phone',
+        'printer', 'projector', 'punchers', 'ring_binder', 'ruler', 'scissors', 'speaker', 'stapler',
+        'tape_dispenser', 'trash_can'
+    ])
+    """
     CLASSES = [
         'aeroplane', 'bicycle', 'bus', 'car', 'horse', 'knife', 'motorcycle', 'person',
         'plant', 'skateboard', 'train', 'truck'
     ]
-
+    """
     worksheet.cell(2, 1, 'domain')
     worksheet.cell(2, 2, 'distance_algo')
     worksheet.cell(2, 3, 'top-1')

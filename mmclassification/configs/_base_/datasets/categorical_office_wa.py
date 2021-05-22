@@ -29,19 +29,24 @@ data = dict(
     samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
-        times=3,
         data_prefix='data/office31/',
-        source_prefix='dslr',
+        source_prefix='webcam',
         target_prefix='amazon',
+        times=3,
+        load_mode=dict(target_balance=False,
+                       target_shuffle=True,
+                       source_balance=False,
+                       source_shuffle=True),
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type_val,
-        data_prefix='data/office31/dslr/images',
+        data_prefix='data/office31/webcam/images',
         pipeline=test_pipeline),
     test=dict(
         # replace `data/val` with `data/test` for standard test
         type=dataset_type_val,
         data_prefix='data/office31/amazon/images',
         pipeline=test_pipeline))
-evaluation = dict(classwise=31, test_mode='distance', interval=1, metric='accuracy', metric_options=dict(topk=(1)))
-initialize = dict(by_epoch=True, kmeans=True, interval=1)
+evaluation = dict(classwise=31, test_mode='distance' ,interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+#cluster = dict(interval=1)
+initialize = dict(by_epoch=True, interval=1)

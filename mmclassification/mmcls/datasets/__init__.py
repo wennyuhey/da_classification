@@ -13,6 +13,8 @@ from .partialvisda import PartialVisDA
 from .classwise import ClasswiseDADataset
 from .classwise_visda import ClasswiseVisDA
 from .classwise_office import ClasswiseOffice
+from .classwise_officehome import ClasswiseOfficeHome
+from .partial_officehome import PartialOfficeHome
 
 __all__ = [
     'BaseDataset', 'ImageNet', 'CIFAR10', 'CIFAR100', 'MNIST', 'FashionMNIST',
@@ -20,5 +22,6 @@ __all__ = [
     'ConcatDataset', 'RepeatDataset', 'DATASETS', 'PIPELINES', 'SVHN', 'Office31',
     'SupConDataset', 'PartialOffice', 'VisDA', 'PartialVisDA', 'ClasswiseDADataset',
     'ClasswiseVisDA', 'ClasswiseSampler', 'build_classwise_dataloader',
-    'ClasswiseOffice', 'DistributedClasswiseSampler'
+    'ClasswiseOffice', 'DistributedClasswiseSampler', 'ClasswiseOfficeHome',
+    'PartialOfficeHome'
 ]

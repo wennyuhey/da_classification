@@ -36,7 +36,6 @@ data = dict(
 
 
 load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
-#load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/epoch_5.pth'
 #resume_from = '/lustre/S/wangyu/env/contrastive/mmclassification/work_dirs/cluster/latest.pth'
 #resume_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/pseudolabel/singlegpu/norm_eps005_nobn/epoch_5.pth'
 #load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/latest.pth'
