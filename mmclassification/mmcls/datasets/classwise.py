@@ -125,7 +125,15 @@ class ClasswiseDADataset(Dataset, metaclass=ABCMeta):
             list[int]: categories for all images.
         """
 
-        gt_labels = np.array([data['gt_label'] for data in self.data_infos])
+        gt_labels = np.array([data['gt_label'] for data in self.source_data])
+        return gt_labels
+
+    def get_pseudo_labels(self):
+        pseudo_labels = np.array([data['pseudo_label'] for data in self.target_data])
+        return pseudo_labels
+
+    def get_target_labels(self):
+        gt_labels = np.array([data['gt_label'] for data in self.target_data])
         return gt_labels
 
     def get_cat_ids(self, idx):

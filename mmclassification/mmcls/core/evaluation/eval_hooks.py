@@ -157,9 +157,10 @@ class DAEvalHook(Hook):
         self.by_epoch = by_epoch
         self.classwise = classwise
         self.test_mode = test_mode
+    """
     def before_train_epoch(self, runner):
-        if runner.epoch != 17:
-            return
+        #if runner.epoch != 17:
+        #    return
         from mmcls.apis import da_single_gpu_test
         #results_s = da_single_gpu_test(runner.model, self.dataloader[0], show=False)
         results_s = None
@@ -169,6 +170,7 @@ class DAEvalHook(Hook):
         _, pseudo_label = torch.max(results_t, dim=1)
         runner.data_loader.dataset.update(pseudo_label)
         print('update pseudo label')
+    """
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
@@ -228,13 +230,14 @@ class DADistEvalHook(DAEvalHook):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
             return
         from mmcls.apis import da_multi_gpu_test
-        _, _, results_s = da_multi_gpu_test(
-            runner.model,
-            self.dataloader[0],
-            domain='source',
-            test_mode=self.test_mode,
-            tmpdir=osp.join(runner.work_dir, '.eval_hook'),
-            gpu_collect=self.gpu_collect)
+        #_, _, results_s = da_multi_gpu_test(
+        #    runner.model,
+        #    self.dataloader[0],
+        #    domain='source',
+        #    test_mode=self.test_mode,
+        #    tmpdir=osp.join(runner.work_dir, '.eval_hook'),
+        #    gpu_collect=self.gpu_collect)
+        results_s = None
         _, _, results_t = da_multi_gpu_test(
             runner.model,
             self.dataloader[1],
@@ -256,7 +259,7 @@ class DADistEvalHook(DAEvalHook):
         dist.barrier()
         runner.data_loader.dataset.update(pseudo_label)
     def before_train_epoch(self, runner):
-        if not runner.epoch == 17:
+        if not runner.epoch == 2:
             return
         from mmcls.apis import da_multi_gpu_test
         _, _, results_t = da_multi_gpu_test(

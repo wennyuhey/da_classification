@@ -7,7 +7,7 @@ model=dict(
         type='DASupClusterHead',
         num_classes=12,
         in_channels=2048,
-        mlp_dim=128,
+        mlp_dim=512,
         threshold=0,
         momentum=0.9,
         cluster=True,
@@ -36,15 +36,13 @@ data = dict(
 
 
 #load_from = '/lustre/S/wangyu/PretrainedModels/resnet101_new.pth'
-#load_from = '/lustre/S/wangyu/da_log/visda/dist/nobn_nonorm_nolabel_eps1_mlp_128_load/epoch_18.pth'
 #load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/epoch_5.pth'
 #resume_from = '/lustre/S/wangyu/env/contrastive/mmclassification/work_dirs/cluster/latest.pth'
 #resume_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/pseudolabel/singlegpu/norm_eps005_nobn/epoch_5.pth'
 #load_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/dist/norm_eps005_nobn/latest.pth'
 #resume_from = '/lustre/S/wangyu/checkpoint/classification/da/visda/pseudolabel/singlegpu/norm_eps005_nobn/epoch_11.pth'
 #resume_from = '/lustre/S/wangyu/da_log/visda/singlegpu/bn_norm_label_eps005_mlp_128/epoch_17.pth'
-#load_from = '/lustre/S/wangyu/da_log/visda/singlegpu/nobn_norm_nolabel_eps005_mlp_128.py/epoch_21.pth'
-load_from = '/lustre/S/wangyu/da_log/visda/dist/nobn_nonorm_label_eps005_mlp_128_load_fc_load_noinit/epoch_8.pth'
+load_from = '/lustre/S/wangyu/da_log/visda/singlegpu/nobn_norm_nolabel_eps005_mlp_128.py/epoch_21.pth'
 aux = True
 validation=True
 source_only = False

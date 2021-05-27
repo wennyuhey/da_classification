@@ -158,8 +158,8 @@ def main():
         mmcv.dump(dataset_t.get_gt_labels(), 'gt_labels_t.pkl')
         mmcv.dump(features_s, 'features_s.pkl')
         mmcv.dump(features_t, 'features_t.pkl')
-        mmcv.dump(features_s, 'mlp_features_s.pkl')
-        mmcv.dump(features_t, 'mlp_features_t.pkl')
+        mmcv.dump(mlp_features_s, 'mlp_features_s.pkl')
+        mmcv.dump(mlp_features_t, 'mlp_features_t.pkl')
 
  
 

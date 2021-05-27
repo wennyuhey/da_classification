@@ -49,4 +49,4 @@ data = dict(
         pipeline=test_pipeline))
 evaluation = dict(classwise=31, test_mode='distance' ,interval=1, metric='accuracy', metric_options=dict(topk=(1)))
 #cluster = dict(interval=1)
-initialize = dict(by_epoch=True, interval=1)
+initialize = dict(by_epoch=True, interval=1, stop_iter=4)

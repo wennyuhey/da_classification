@@ -159,7 +159,7 @@ class DASupClusterHead(BaseHead):
             c.div_(batchsize)
             on_diag = torch.diagonal(c).add_(-1).pow_(2).sum().mul(scale_loss)
             off_diag = self.off_diagonal(c).pow_(2).sum().mul(scale_loss)
-            losses['barlow_loss'] = on_diag + lambd * off_diag
+            losses['barlow_loss'] = 0.1 *(on_diag + lambd * off_diag)
 
         if self.con_target_loss is not None:
             features_mlp_target = torch.cat((mlp_target[0: batchsize].unsqueeze(1),
@@ -219,13 +219,13 @@ class DASupClusterHead(BaseHead):
                 dist_target = dist_target.reshape(self.times_target, batchsize, -1)
                 C = torch.zeros_like(dist_target[0]).to(torch.device('cuda'))
                 dist_max = torch.zeros((batchsize, 1)).to(torch.device('cuda'))
-                #pred = torch.zeros((batchsize, 1)).to(torch.device('cuda')) - 1
+                pred = torch.zeros((batchsize, 1)).to(torch.device('cuda')) - 1
                 for i in range(self.times_target):
                     d = dist_target[i]
                     d_max, d_pred = torch.max(d, dim=1, keepdim=True)
                     mask = dist_max > d_max
                     C = C * mask + d * ~mask
-                    #pred = pred * mask + d_pred * ~mask
+                    pred = pred * mask + d_pred * ~mask
                     dist_max = dist_max * mask + d_max * ~mask
                 if self.stable_cost:
                     C = C - dist_max
@@ -296,7 +296,7 @@ class DASupClusterHead(BaseHead):
                 losses['target_map_loss'] = F.cross_entropy(dist_target, target_cls_label)
                 #losses['target_mlp_map_loss'] = F.cross_entropy(mlp_dist_target, target_cls_label)
             if self.pseudo and target_pseudo[0] != -1:
-                losses['target_pseudo_loss'] = self.cls_loss(cls_target, target_pseudo_label)
+                losses['target_pseudo_loss'] = 0.1 * self.cls_loss(cls_target, target_pseudo_label)
                 #losses['mlp_target_map_loss'] = self.cls_loss(mlp_dist_target, target_cls_label)
             #if not self.cls_map:
             if self.sourcecls:
