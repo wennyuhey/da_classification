@@ -95,10 +95,9 @@ def main():
     rank, _ = get_dist_info()
     if rank == 0:
         if args.metric != '':
-            results, class_rate = dataset.evaluate(outputs, args.metric, classwise=12)
+            results = dataset.evaluate(outputs, args.metric)
             for topk, acc in results.items():
                 print(f'\n{topk} accuracy: {acc:.2f}')
-            print(class_rate)
         else:
             scores = np.vstack(outputs)
             pred_score = np.max(scores, axis=1)

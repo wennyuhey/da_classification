@@ -1,7 +1,8 @@
 # dataset settings
-dataset_type = 'VisDA'
+dataset_type = 'PartialOfficeHome'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='RandomResizedCrop', size=224),
@@ -20,20 +21,32 @@ test_pipeline = [
     dict(type='Collect', keys=['img'])
 ]
 data = dict(
-    samples_per_gpu=30,
+    samples_per_gpu=60,
     workers_per_gpu=2,
-    samples_validate_per_gpu=500,
     train=dict(
         type=dataset_type,
-        data_prefix='data/visda/train',
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/Art',
         pipeline=train_pipeline),
-    val=dict(
+    val_ar=dict(
         type=dataset_type,
-        data_prefix='data/visda/validation',
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/Art',
         pipeline=test_pipeline),
+    val_cl=dict(
+        type=dataset_type,
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/Clipart',
+        pipeline=test_pipeline),
+    val_pr=dict(
+        type=dataset_type,
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/Product/',
+        pipeline=test_pipeline),
+    val_rw=dict(
+        type=dataset_type,
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/RealWorld',
+        pipeline=test_pipeline),
+
     test=dict(
         # replace `data/val` with `data/test` for standard test
         type=dataset_type,
-        data_prefix='data/visda/validation',
+        data_prefix='data/officehome/OfficeHomeDataset_10072016/Art',
         pipeline=test_pipeline))
-evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)))
+evaluation = dict(interval=1, metric='accuracy', metric_options=dict(topk=(1)), classwise=65)

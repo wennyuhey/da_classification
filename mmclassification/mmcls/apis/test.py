@@ -11,7 +11,7 @@ import torch.distributed as dist
 from mmcv.runner import get_dist_info
 
 
-def single_gpu_test(model, data_loader, test_mode='distance', show=False, out_dir=None):
+def single_gpu_test(model, data_loader, show=False, out_dir=None):
     model.eval()
     results = []
     dataset = data_loader.dataset
@@ -19,7 +19,7 @@ def single_gpu_test(model, data_loader, test_mode='distance', show=False, out_di
     for i, data in enumerate(data_loader):
         data = {'img': data['img']}
         with torch.no_grad():
-            result = model(return_loss=False, test_mode=test_mode, **data)
+            result = model(return_loss=False, **data)
         results.append(result)
 
         if show or out_dir:

@@ -53,7 +53,7 @@ class EvalHook(Hook):
     def evaluate(self, runner, results):
         eval_res = self.dataloader.dataset.evaluate(
             results, logger=runner.logger, classwise=self.classwise, **self.eval_kwargs)
-        for name, val in eval_res.items():
+        for name, val in eval_res[0].items():
             runner.log_buffer.output[name] = val
         runner.log_buffer.ready = True
 
@@ -80,7 +80,35 @@ class OfficeEvalHook(EvalHook):
         for i in range(3):
             eval_res.append(self.dataloader[i].dataset.evaluate(
                 results[i], logger=runner.logger, classwise=self.classwise, **self.eval_kwargs))
-            for name, val in eval_res[i].items():
+            for name, val in eval_res[i][0].items():
+                runner.log_buffer.output[datasetdict[i] + name] = val
+            runner.log_buffer.ready = True
+
+class HomeEvalHook(EvalHook):
+    def __init__(self,
+                 dataloader,
+                 interval=1,
+                 by_epoch=True,
+                 **eval_kwargs):
+        super(HomeEvalHook, self).__init__(dataloader, interval=1, by_epoch=True, **eval_kwargs)
+
+    def after_train_epoch(self, runner):
+        if not self.by_epoch or not self.every_n_epochs(runner, self.interval):
+            return
+        from mmcls.apis import single_gpu_test
+        results = []
+        results.append(single_gpu_test(runner.model, self.dataloader[0], show=False))
+        results.append(single_gpu_test(runner.model, self.dataloader[1], show=False))
+        results.append(single_gpu_test(runner.model, self.dataloader[2], show=False))
+        results.append(single_gpu_test(runner.model, self.dataloader[3], show=False))
+        self.evaluate(runner, results)
+    def evaluate(self, runner, results):
+        eval_res = []
+        datasetdict = {0: 'ar', 1: 'cl', 2: 'pr', 3: 'rw'}
+        for i in range(4):
+            eval_res.append(self.dataloader[i].dataset.evaluate(
+                results[i], logger=runner.logger, classwise=self.classwise, **self.eval_kwargs))
+            for name, val in eval_res[i][0].items():
                 runner.log_buffer.output[datasetdict[i] + name] = val
             runner.log_buffer.ready = True
 
@@ -111,6 +139,7 @@ class DistEvalHook(EvalHook):
         self.gpu_collect = gpu_collect
         self.by_epoch = by_epoch
         self.eval_kwargs = eval_kwargs
+        self.classwise = False
 
     def after_train_epoch(self, runner):
         if not self.by_epoch or not self.every_n_epochs(runner, self.interval):

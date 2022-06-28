@@ -37,7 +37,7 @@ class ClsHead(BaseHead):
         #loss = self.compute_loss(cls_score, gt_label, avg_factor=num_samples)
         loss = self.compute_loss(cls_score, gt_label)
         # compute accuracy
-        acc = self.compute_accuracy(cls_score, gt_label)
+        acc, _ = self.compute_accuracy(cls_score, gt_label)
         assert len(acc) == len(self.topk)
         losses['loss'] = loss
         losses['accuracy'] = {f'top-{k}': a for k, a in zip(self.topk, acc)}
